@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { api, eur } from "../lib/api";
 import { findDuplicates } from "../lib/findDuplicates";
-import { useNotifications, NotificationSettings } from "../lib/useNotifications.jsx";
+import { useNotifications } from "../lib/useNotifications.jsx";
 import { useRecurring } from "../lib/useRecurring";
 import { useProjects } from "../lib/projectsContext";
 import RecurringForecast from "../components/RecurringForecast";
@@ -17,7 +17,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   LineChart, Line, CartesianGrid,
 } from "recharts";
-import { Wallet, TrendingUp, Receipt, Sparkles, Plus, ScanLine, AlertTriangle, Copy, Bell } from "lucide-react";
+import { Wallet, TrendingUp, Receipt, Sparkles, Plus, ScanLine, AlertTriangle, Copy } from "lucide-react";
 
 export default function Dashboard() {
 	const { categories } = useCategories();
@@ -27,7 +27,7 @@ export default function Dashboard() {
   const [allExpenses, setAllExpenses] = useState([]);
   const [error, setError] = useState(false);
 
-  const notif = useNotifications(stats);
+  useNotifications(stats);
 
   const load = async () => {
     try {
@@ -93,20 +93,11 @@ export default function Dashboard() {
           </h1>
           <p className="text-[#5C626A] mt-2 max-w-xl">
             {activeProject
-              ? `Viendo los datos del proyecto «${activeProject}». Cambia de proyecto en la barra superior.`
+              ? `Viendo los datos del proyecto «${activeProject}». Cambia de proyecto en Ajustes → Proyecto.`
               : "Escanea tickets, controla tu presupuesto y consulta gráficos en tiempo real."}
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            data-testid="btn-notif-settings"
-            onClick={() => notif.setOpenSettings(true)}
-            className="p-2.5 rounded-xl border border-[#E2DDD3] bg-white hover:bg-[#FAF8F5] transition-colors relative"
-            title="Configurar notificaciones"
-          >
-            <Bell className="w-4 h-4 text-[#5C626A]" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#D95D39]" />
-          </button>
           <Link to="/escanear">
             <Button data-testid="btn-scan-hero" className="bg-[#1E293B] hover:bg-[#0F172A] text-white rounded-xl">
               <ScanLine className="w-4 h-4 mr-2" /> Escanear ticket
@@ -633,15 +624,6 @@ export default function Dashboard() {
           </ul>
         )}
       </Card>
-
-      <NotificationSettings
-        open={notif.openSettings}
-        onClose={() => notif.setOpenSettings(false)}
-        prefs={notif.prefs}
-        setPrefs={notif.setPrefs}
-        perm={notif.perm}
-        requestNotif={notif.requestNotif}
-      />
     </div>
   );
 }

@@ -57,11 +57,15 @@ function sendBrowserNotif(title, body, tag) {
   return null;
 }
 
-export function useNotifications(stats) {
-  const prefs = useRef(loadPrefs());
-  const firedRef = useRef(new Set());
-  const [openSettings, setOpenSettings] = useState(false);
+/** Preferencias de notificación y permiso del navegador (compartido por la UI y el motor de avisos). */
+export function useNotificationPrefs() {
+  const [prefs, setPrefsState] = useState(loadPrefs);
   const [perm, setPerm] = useState(currentPermission);
+
+  const setPrefs = useCallback((p) => {
+    setPrefsState(p);
+    savePrefs(p);
+  }, []);
 
   const requestNotif = useCallback(async () => {
     const p = await requestPermission();
@@ -83,6 +87,14 @@ export function useNotifications(stats) {
     return p;
   }, []);
 
+  return { prefs, setPrefs, perm, requestNotif };
+}
+
+/** Motor de avisos: lanza notificaciones/avisos según el estado del presupuesto. */
+export function useNotifications(stats) {
+  const { prefs } = useNotificationPrefs();
+  const firedRef = useRef(new Set());
+
   useEffect(() => {
     if (!stats) return;
 
@@ -94,7 +106,9 @@ export function useNotifications(stats) {
     const overBudget = Number(stats.remaining) < 0 && Number(stats.budget) > 0;
     const cb = stats.category_budgets || {};
     const spentMap = {};
-    (stats.period_by_category || stats.by_category || []).forEach((c) => { spentMap[c.category] = c.total; });
+    (stats.period_by_category || stats.by_category || []).forEach((c) => {
+      spentMap[c.category] = c.total;
+    });
 
     const fireNotif = (title, body, tag) => {
       if (firedRef.current.has(tag)) return;
@@ -105,9 +119,9 @@ export function useNotifications(stats) {
       }
     };
 
-    if (overBudget && prefs.current.budget_over) {
+    if (overBudget && prefs.budget_over) {
       fireNotif("Presupuesto excedido", `Has gastado ${periodSpent}€ de ${stats.budget}€ este ${periodLabel}`, "budget_over");
-    } else if (stats.progress >= alertAt && prefs.current.budget_warn) {
+    } else if (stats.progress >= alertAt && prefs.budget_warn) {
       fireNotif("Aviso de presupuesto", `Has alcanzado el ${stats.progress.toFixed(1)}% de tu presupuesto (${periodLabel})`, "budget_warn");
     }
 
@@ -120,9 +134,9 @@ export function useNotifications(stats) {
       });
 
     for (const issue of issues) {
-      if (issue.over && prefs.current.budget_over) {
+      if (issue.over && prefs.budget_over) {
         fireNotif(`Presupuesto excedido: ${issue.cat}`, `${issue.spent}€ de ${issue.limit}€ este ${periodLabel}`, `cat_over_${issue.cat}`);
-      } else if (issue.warn && prefs.current.budget_warn) {
+      } else if (issue.warn && prefs.budget_warn) {
         fireNotif(`Aviso: ${issue.cat}`, `Cerca del límite (${issue.spent}€ de ${issue.limit}€)`, `cat_warn_${issue.cat}`);
       }
     }
@@ -131,126 +145,90 @@ export function useNotifications(stats) {
       const dailyAvg = periodSpent / elapsed;
       const forecast = Math.round(dailyAvg * totalDays * 100) / 100;
       const budgetTotal = Number(stats.budget || 0);
-      if (budgetTotal > 0 && forecast > budgetTotal && prefs.current.projection_over) {
+      if (budgetTotal > 0 && forecast > budgetTotal && prefs.projection_over) {
         fireNotif("Proyección alarmante", `Ritmo actual: ${forecast}€ estimado para el ${periodLabel} (tope: ${budgetTotal}€)`, "proj_over");
-      } else if (budgetTotal > 0 && forecast >= budgetTotal * (alertAt / 100) && prefs.current.projection_warn) {
+      } else if (budgetTotal > 0 && forecast >= budgetTotal * (alertAt / 100) && prefs.projection_warn) {
         fireNotif("Proyección en alerta", `Estimación del ${periodLabel}: ${forecast}€ (${alertAt}%+ del presupuesto)`, "proj_warn");
       }
     }
-  }, [stats]);
-
-  return {
-    prefs: prefs.current,
-    setPrefs: (p) => { prefs.current = p; savePrefs(p); },
-    perm,
-    requestNotif,
-    openSettings,
-    setOpenSettings,
-  };
+  }, [stats, prefs]);
 }
 
-export function NotificationSettings({ open, onClose, prefs, setPrefs, perm, requestNotif }) {
-  const [localPrefs, setLocalPrefs] = useState(prefs);
-
-  useEffect(() => { setLocalPrefs(prefs); }, [prefs]);
-
-  const update = (key, val) => {
-    const next = { ...localPrefs, [key]: val };
-    setLocalPrefs(next);
-    setPrefs(next);
-  };
-
-  if (!open) return null;
+/** Panel de configuración de notificaciones (embebible, sin modal). */
+export function NotificationSettingsPanel({ prefs, setPrefs, perm, requestNotif }) {
+  const update = (key, val) => setPrefs({ ...prefs, [key]: val });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-2xl border border-[#E2DDD3] p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-        <h3 className="font-heading font-bold text-xl text-[#1A1D20]">Notificaciones</h3>
-        <p className="text-sm text-[#5C626A] mt-1">Configura cuándo recibir avisos.</p>
+    <div>
+      <div className="space-y-3">
+        <Toggle label="Presupuesto excedido" desc="Aviso cuando se supere el total o un tope de categoría" value={prefs.budget_over} onChange={(v) => update("budget_over", v)} />
+        <Toggle label="Aviso de presupuesto" desc="Al acercarse al umbral del presupuesto" value={prefs.budget_warn} onChange={(v) => update("budget_warn", v)} />
+        <Toggle label="Proyección excedida" desc="Si el ritmo actual supera el presupuesto" value={prefs.projection_over} onChange={(v) => update("projection_over", v)} />
+        <Toggle label="Proyección en alerta" desc="Si la proyección supera el umbral de aviso" value={prefs.projection_warn} onChange={(v) => update("projection_warn", v)} />
+        <Toggle label="Recordatorio diario" desc="Aviso diario a la hora configurada" value={prefs.daily_reminder} onChange={(v) => update("daily_reminder", v)} />
 
-        <div className="mt-4 space-y-3">
-          <Toggle label="Presupuesto excedido" desc="Aviso cuando se supere el total o tope de categoría" value={localPrefs.budget_over} onChange={(v) => update("budget_over", v)} />
-          <Toggle label="Aviso de presupuesto" desc={`Al superar el ${localPrefs.alert_at || 80}% del presupuesto`} value={localPrefs.budget_warn} onChange={(v) => update("budget_warn", v)} />
-          <Toggle label="Proyección excedida" desc="Si el ritmo actual supera el presupuesto" value={localPrefs.projection_over} onChange={(v) => update("projection_over", v)} />
-          <Toggle label="Proyección en alerta" desc="Si la proyección supera el umbral de aviso" value={localPrefs.projection_warn} onChange={(v) => update("projection_warn", v)} />
-          <Toggle label="Recordatorio diario" desc="Aviso diario a la hora configurada" value={localPrefs.daily_reminder} onChange={(v) => update("daily_reminder", v)} />
+        {prefs.daily_reminder && (
+          <div className="pl-2">
+            <label className="text-sm text-[#5C626A]">Hora del recordatorio</label>
+            <input
+              type="number"
+              min="8"
+              max="22"
+              value={prefs.reminder_hour}
+              onChange={(e) => update("reminder_hour", Math.min(22, Math.max(8, Number(e.target.value))))}
+              className="ml-2 w-16 rounded-xl border border-[#E2DDD3] p-1 text-center bg-white"
+            />
+          </div>
+        )}
+      </div>
 
-          {localPrefs.daily_reminder && (
-            <div className="pl-4 pt-2">
-              <label className="text-sm text-[#5C626A]">Hora del recordatorio</label>
-              <input type="number" min="8" max="22" value={localPrefs.reminder_hour} onChange={(e) => update("reminder_hour", Math.min(22, Math.max(8, Number(e.target.value))))} className="ml-2 w-16 rounded-xl border border-[#E2DDD3] p-1 text-center" />
-            </div>
-          )}
-        </div>
-
-        <div className="mt-4 pt-4 border-t border-[#E2DDD3]">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-xs text-[#5C626A]">
-              Estado del navegador:{" "}
-              <span
-                className={`font-mono ${
-                  perm === "granted"
-                    ? "text-emerald-700"
-                    : perm === "denied"
+      <div className="mt-4 pt-4 border-t border-[#E2DDD3]">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs text-[#5C626A]">
+            Estado del navegador:{" "}
+            <span
+              className={`font-mono ${
+                perm === "granted"
+                  ? "text-emerald-700"
+                  : perm === "denied"
                     ? "text-red-700"
                     : perm === "default"
-                    ? "text-amber-700"
-                    : "text-[#5C626A]"
-                }`}
-              >
-                {perm === "default" ? "sin solicitar" : perm}
-              </span>
-            </div>
-            {perm === "granted" ? (
-              <span className="text-sm text-emerald-700 font-medium">✓ Activadas</span>
-            ) : perm === "denied" ? (
-              <button
-                onClick={requestNotif}
-                className="text-sm text-[#D95D39] hover:underline"
-                title="El navegador ya bloqueó el permiso; se explicará cómo reactivarlo"
-              >
-                ¿Cómo activarlas?
-              </button>
-            ) : perm === "unsupported" || perm === "insecure" ? (
-              <span className="text-sm text-[#5C626A]">No disponible aquí</span>
-            ) : (
-              <button
-                data-testid="btn-request-notif"
-                onClick={requestNotif}
-                className="text-sm text-[#D95D39] hover:underline"
-              >
-                Solicitar permiso
-              </button>
-            )}
+                      ? "text-amber-700"
+                      : "text-[#5C626A]"
+              }`}
+            >
+              {perm === "default" ? "sin solicitar" : perm}
+            </span>
           </div>
-
-          {perm === "denied" && (
-            <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
-              El navegador tiene las notificaciones <strong>bloqueadas</strong> para este sitio. Para
-              activarlas: pulsa el <strong>candado</strong> (o el icono a la izquierda de la URL) →
-              <strong> Notificaciones</strong> → <strong>Permitir</strong>, y recarga la página.
-              Mientras tanto, los avisos aparecerán dentro de la app.
-            </div>
-          )}
-
-          {perm === "insecure" && (
-            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-              El navegador solo permite notificaciones en <strong>HTTPS</strong> o <strong>localhost</strong>.
-              Los avisos aparecerán dentro de la app.
-            </div>
-          )}
-
-          {perm !== "granted" && perm !== "unsupported" && (
-            <p className="mt-2 text-[11px] text-[#5C626A]">
-              Si el navegador no las permite, los avisos se muestran igualmente como notificaciones
-              dentro de la aplicación.
-            </p>
+          {perm === "granted" ? (
+            <span className="text-sm text-emerald-700 font-medium">✓ Activadas</span>
+          ) : perm === "denied" ? (
+            <button onClick={requestNotif} className="text-sm text-[#D95D39] hover:underline">
+              ¿Cómo activarlas?
+            </button>
+          ) : perm === "unsupported" || perm === "insecure" ? (
+            <span className="text-sm text-[#5C626A]">No disponible aquí</span>
+          ) : (
+            <button data-testid="btn-request-notif" onClick={requestNotif} className="text-sm text-[#D95D39] hover:underline">
+              Solicitar permiso
+            </button>
           )}
         </div>
 
-        <div className="mt-4 flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-[#D95D39] text-white font-medium hover:bg-[#C24C2A]">Cerrar</button>
-        </div>
+        {perm === "denied" && (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+            El navegador tiene las notificaciones <strong>bloqueadas</strong> para este sitio. Para activarlas:
+            pulsa el <strong>candado</strong> (o el icono a la izquierda de la URL) → <strong>Notificaciones</strong> →{" "}
+            <strong>Permitir</strong>, y recarga la página. Mientras tanto, los avisos aparecen dentro de la app.
+          </div>
+        )}
+
+        {perm === "insecure" && (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+            El navegador solo permite notificaciones en <strong>HTTPS</strong> o <strong>localhost</strong>. Los avisos
+            aparecerán dentro de la app.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -258,14 +236,14 @@ export function NotificationSettings({ open, onClose, prefs, setPrefs, perm, req
 
 function Toggle({ label, desc, value, onChange }) {
   return (
-    <div className="flex items-center justify-between p-2 rounded-lg bg-[#FAF8F5]">
-      <div>
+    <div className="flex items-center justify-between p-3 rounded-xl bg-[#FAF8F5] border border-[#E2DDD3]">
+      <div className="min-w-0 pr-3">
         <p className="text-sm font-medium text-[#1A1D20]">{label}</p>
         <p className="text-xs text-[#5C626A]">{desc}</p>
       </div>
       <button
         onClick={() => onChange(!value)}
-        className={`w-10 h-6 rounded-full transition-colors ${value ? "bg-[#D95D39]" : "bg-[#E2DDD3]"} relative`}
+        className={`w-10 h-6 rounded-full transition-colors shrink-0 ${value ? "bg-[#D95D39]" : "bg-[#E2DDD3]"} relative`}
         role="switch"
         aria-checked={value}
       >

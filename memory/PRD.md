@@ -64,6 +64,8 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Gráficos avanzados en el Panel: evolución por categoría (barras apiladas) y comparativa mes a mes
 - [x] Cierre de mes: bloquear/reabrir un mes (por proyecto); no se pueden añadir/editar/eliminar gastos de un mes cerrado
 - [x] Recordatorio de cierre de mes: aviso (banner + notificación) cuando el mes está por terminar o el anterior sigue abierto
+- [x] Vista de calendario (sección propia `/calendario`): gastos por día del mes con total y detalle al pulsar
+- [x] Ajustes (`/ajustes`): página única con pestañas para Proyecto (selección y gestión), Presupuesto, Categorías, Ahorro, Notificaciones y Datos. La configuración de notificaciones sale del Panel y el selector de proyecto sale de la cabecera.
 - [x] Notificaciones proactivas (browser notifications + panel de configuración, avisos de presupuesto y proyección)
 - [x] PWA: instalable, offline (shell precacheado) y manifest con iconos
 - [x] Galería dedicada de tickets

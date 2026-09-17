@@ -1,6 +1,6 @@
 import "@/App.css";
 import { Suspense, lazy } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import Header from "@/components/Header";
 import MigrationBanner from "@/components/MigrationBanner";
@@ -11,10 +11,11 @@ import { AuthProvider } from "@/lib/authContext";
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Expenses = lazy(() => import("@/pages/Expenses"));
 const Scan = lazy(() => import("@/pages/Scan"));
-const Budget = lazy(() => import("@/pages/Budget"));
+const Settings = lazy(() => import("@/pages/Settings"));
 const Login = lazy(() => import("@/pages/Login"));
 const Gallery = lazy(() => import("@/pages/Gallery"));
 const MonthlyReport = lazy(() => import("@/pages/MonthlyReport"));
+const Calendar = lazy(() => import("@/pages/Calendar"));
 
 function PageLoader() {
   return (
@@ -38,9 +39,11 @@ function App() {
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/gastos" element={<Expenses />} />
                   <Route path="/escanear" element={<Scan />} />
-                  <Route path="/presupuesto" element={<Budget />} />
+                  <Route path="/ajustes" element={<Settings />} />
+                  <Route path="/presupuesto" element={<Navigate to="/ajustes?tab=presupuesto" replace />} />
                   <Route path="/galeria" element={<Gallery />} />
                   <Route path="/informe" element={<MonthlyReport />} />
+                  <Route path="/calendario" element={<Calendar />} />
                   <Route path="/login" element={<Login />} />
                 </Routes>
               </Suspense>
