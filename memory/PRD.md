@@ -58,6 +58,10 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Desviación presupuesto vs real (en el Informe mensual): por categoría (tope vs gasto del mes) y por proyecto, con desviación absoluta y estado
 - [x] Copia de seguridad: exportar/importar todos los datos locales en JSON (gastos, presupuestos, categorías, proyectos, objetivos, recurrentes, reglas y preferencias)
 - [x] Exportar el informe mensual a PDF (impresión del navegador con estilos de impresión)
+- [x] Previsión de gastos recurrentes del mes (total, registrado vs pendiente y estado por plantilla)
+- [x] Varios tickets/imágenes por gasto (adjuntar, ver y descargar varias fotos del mismo gasto)
+- [x] Ficha de proyecto ampliada: nombre, descripción, color e icono (editables)
+- [x] Gráficos avanzados en el Panel: evolución por categoría (barras apiladas) y comparativa mes a mes
 - [x] Notificaciones proactivas (browser notifications + panel de configuración, avisos de presupuesto y proyección)
 - [x] PWA: instalable, offline (shell precacheado) y manifest con iconos
 - [x] Galería dedicada de tickets

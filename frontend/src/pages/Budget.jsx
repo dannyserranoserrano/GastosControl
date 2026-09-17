@@ -110,14 +110,11 @@ export default function BudgetPage() {
     }
   };
 
-  const progress = Math.min(stats?.progress || 0, 100);
-  const overBudget = stats && stats.remaining < 0 && stats.budget > 0;
   const spentByCat = {};
   (stats?.period_by_category || stats?.by_category || []).forEach((c) => {
     spentByCat[c.category] = c.total;
   });
   const alertThreshold = stats?.alert_at > 0 ? stats.alert_at : 80;
-  const activePeriodLabel = periodLabel(stats?.period || period);
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -194,26 +191,6 @@ export default function BudgetPage() {
         </form>
       </Card>
 
-      {stats && (
-        <Card className="p-6 rounded-2xl border-[#E2DDD3] bg-white">
-          <h3 className="font-heading font-bold text-lg mb-4">Estado actual</h3>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <Row label="Presupuesto" value={eur(stats.budget)} />
-            <Row label={`Gastado (${activePeriodLabel.toLowerCase()})`} value={eur(stats.period_spent ?? stats.total_spent)} />
-            <Row
-              label={overBudget ? "Excedido" : "Disponible"}
-              value={eur(Math.abs(stats.remaining))}
-              tone={overBudget ? "text-red-700" : "text-emerald-700"}
-            />
-            <Row label="Nº tickets" value={stats.count} />
-          </div>
-          <Progress value={progress} className="h-3" />
-          <p className="text-xs text-[#5C626A] mt-2 font-mono">
-            {progress.toFixed(1)}% del presupuesto consumido en el {activePeriodLabel.toLowerCase()}
-          </p>
-        </Card>
-      )}
-
       <Card className="p-6 rounded-2xl border-[#E2DDD3] bg-white">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
@@ -289,15 +266,6 @@ export default function BudgetPage() {
       <GoalsManager />
       <CategoryManager />
       <BackupManager />
-    </div>
-  );
-}
-
-function Row({ label, value, tone }) {
-  return (
-    <div className="rounded-xl border border-[#E2DDD3] bg-[#FAF8F5] p-3">
-      <div className="text-[11px] font-mono uppercase tracking-widest text-[#5C626A]">{label}</div>
-      <div className={`font-heading font-bold text-xl ${tone || "text-[#1A1D20]"}`}>{value}</div>
     </div>
   );
 }

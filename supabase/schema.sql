@@ -36,12 +36,14 @@ create table if not exists public.expenses (
   project text not null default '',
   notes text not null default '',
   items jsonb not null default '[]'::jsonb,
+  receipts jsonb not null default '[]'::jsonb,
   receipt_path text,
   receipt_url text,
   created_at timestamptz not null default now()
 );
 
 alter table public.expenses add column if not exists project text not null default '';
+alter table public.expenses add column if not exists receipts jsonb not null default '[]'::jsonb;
 
 create index if not exists expenses_user_idx on public.expenses (user_id, date desc);
 

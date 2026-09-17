@@ -154,6 +154,7 @@ class Expense(BaseModel):
     project: str = ""
     notes: str = ""
     items: List[dict] = Field(default_factory=list)
+    receipts: List[dict] = Field(default_factory=list)
     receipt_path: Optional[str] = None  # storage path
     receipt_url: Optional[str] = None   # backend URL to fetch
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -167,6 +168,7 @@ class ExpenseCreate(BaseModel):
     project: str = ""
     notes: str = ""
     items: List[dict] = Field(default_factory=list)
+    receipts: List[dict] = Field(default_factory=list)
     receipt_path: Optional[str] = None
     receipt_url: Optional[str] = None
 
@@ -179,6 +181,7 @@ class ExpenseUpdate(BaseModel):
     project: Optional[str] = None
     notes: Optional[str] = None
     items: Optional[List[dict]] = None
+    receipts: Optional[List[dict]] = None
 
 
 class Budget(BaseModel):

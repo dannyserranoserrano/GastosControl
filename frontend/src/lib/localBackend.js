@@ -106,6 +106,14 @@ async function normalizeCategory(cat, cats) {
 }
 
 async function buildExpense(body, cats) {
+  const receipts = Array.isArray(body && body.receipts)
+    ? body.receipts
+        .map((r) => ({
+          path: (r && (r.path || r.url)) || null,
+          url: (r && (r.url || r.path)) || null,
+        }))
+        .filter((r) => r.path || r.url)
+    : [];
   return {
     id: uid(),
     vendor: (body && body.vendor) || "",
@@ -115,8 +123,9 @@ async function buildExpense(body, cats) {
     project: String((body && body.project) || "").trim().slice(0, 80),
     notes: (body && body.notes) || "",
     items: (body && body.items) || [],
-    receipt_path: (body && body.receipt_path) || null,
-    receipt_url: (body && body.receipt_url) || null,
+    receipts,
+    receipt_path: receipts[0]?.path || (body && body.receipt_path) || null,
+    receipt_url: receipts[0]?.url || (body && body.receipt_url) || null,
     created_at: new Date().toISOString(),
   };
 }
@@ -266,10 +275,23 @@ async function dispatch(method, url, body, config) {
     if (method === "patch") {
       if (idx === -1) throw fail(404, "Not found");
       const next = { ...list[idx] };
-      ["vendor", "date", "amount", "category", "project", "notes", "items"].forEach((k) => {
+      ["vendor", "date", "amount", "category", "project", "notes", "items", "receipts"].forEach((k) => {
         if (body && body[k] !== undefined) next[k] = body[k];
       });
       next.project = String(next.project || "").trim().slice(0, 80);
+      if (Array.isArray(next.receipts)) {
+        next.receipts = next.receipts
+          .map((r) => ({
+            path: (r && (r.path || r.url)) || null,
+            url: (r && (r.url || r.path)) || null,
+          }))
+          .filter((r) => r.path || r.url);
+        next.receipt_path = next.receipts[0]?.path || null;
+        next.receipt_url = next.receipts[0]?.url || null;
+      } else if (body && body.receipt_path !== undefined) {
+        next.receipt_path = body.receipt_path;
+        next.receipt_url = body.receipt_url || body.receipt_path;
+      }
       const cats = await readCategories(next.project);
       next.category = await normalizeCategory(next.category, cats);
       list[idx] = next;

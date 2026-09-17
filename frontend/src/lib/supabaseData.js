@@ -240,19 +240,37 @@ async function renameProject(user, body) {
   return { ok: true, project: to };
 }
 
+async function uploadReceiptList(userId, rawList) {
+  const out = [];
+  for (const r of rawList || []) {
+    let path = (r && (r.path || r.url)) || null;
+    let url = (r && (r.url || r.path)) || null;
+    if (path && path.startsWith("data:")) {
+      const publicUrl = await uploadReceiptToStorage(userId, path);
+      path = publicUrl;
+      url = publicUrl;
+    }
+    if (path || url) out.push({ path, url });
+  }
+  return out;
+}
+
 async function insertExpense(user, body) {
   const cats = await getCategories(user, body && body.project);
   const category = cats.some((c) => c.name === (body && body.category))
     ? body.category
     : "Otros";
 
-  let receipt_path = (body && body.receipt_path) || null;
-  let receipt_url = (body && body.receipt_url) || null;
-  if (receipt_path && receipt_path.startsWith("data:")) {
-    const publicUrl = await uploadReceiptToStorage(user.id, receipt_path);
-    receipt_path = publicUrl;
-    receipt_url = publicUrl;
+  let receipts = Array.isArray(body && body.receipts)
+    ? await uploadReceiptList(user.id, body.receipts)
+    : [];
+  if (receipts.length === 0 && body && body.receipt_path) {
+    receipts = await uploadReceiptList(user.id, [
+      { path: body.receipt_path, url: body.receipt_url || body.receipt_path },
+    ]);
   }
+  const receipt_path = receipts[0]?.path || null;
+  const receipt_url = receipts[0]?.url || null;
 
   const row = {
     id: uid(),
@@ -264,12 +282,15 @@ async function insertExpense(user, body) {
     project: String((body && body.project) || "").trim().slice(0, 80),
     notes: (body && body.notes) || "",
     items: (body && body.items) || [],
+    receipts,
     receipt_path,
     receipt_url,
   };
   let { error } = await supabase.from("expenses").insert(row);
-  if (error && missingColumn(error, "project")) {
-    const { project, ...rest } = row;
+  if (error && (missingColumn(error, "receipts") || missingColumn(error, "project"))) {
+    const { receipts: _r, project: _p, ...rest } = row;
+    if (!missingColumn(error, "receipts")) rest.receipts = receipts;
+    if (!missingColumn(error, "project")) rest.project = row.project;
     ({ error } = await supabase.from("expenses").insert(rest));
   }
   if (error) throw fail(500, error.message);
@@ -282,6 +303,7 @@ async function insertExpense(user, body) {
     project: row.project,
     notes: row.notes,
     items: row.items,
+    receipts,
     receipt_path,
     receipt_url,
     created_at: new Date().toISOString(),
@@ -293,6 +315,11 @@ async function patchExpense(user, id, body) {
   ["vendor", "date", "amount", "category", "project", "notes", "items"].forEach((k) => {
     if (body && body[k] !== undefined) updates[k] = body[k];
   });
+  if (body && body.receipts !== undefined) {
+    updates.receipts = await uploadReceiptList(user.id, body.receipts);
+    updates.receipt_path = updates.receipts[0]?.path || null;
+    updates.receipt_url = updates.receipts[0]?.url || null;
+  }
   if (updates.project !== undefined) updates.project = String(updates.project || "").trim().slice(0, 80);
   const cats = await getCategories(user, updates.project);
   if (updates.category !== undefined) {
@@ -307,8 +334,14 @@ async function patchExpense(user, id, body) {
     .eq("user_id", user.id)
     .select("*")
     .maybeSingle();
-  if (error && missingColumn(error, "project")) {
-    const { project, ...rest } = updates;
+  if (error && (missingColumn(error, "receipts") || missingColumn(error, "project"))) {
+    const rest = { ...updates };
+    if (missingColumn(error, "receipts")) {
+      delete rest.receipts;
+      delete rest.receipt_path;
+      delete rest.receipt_url;
+    }
+    if (missingColumn(error, "project")) delete rest.project;
     ({ data, error } = await supabase
       .from("expenses")
       .update(rest)

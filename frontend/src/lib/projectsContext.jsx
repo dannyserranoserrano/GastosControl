@@ -5,26 +5,44 @@ import { loadTemplates, saveTemplates } from "./recurring";
 const LIST_KEY = "gastocontrol:projects";
 const ACTIVE_KEY = "gastocontrol:active_project";
 
+const DEFAULT_META = { description: "", color: "indigo", icon: "Package" };
+
 const ProjectsCtx = createContext({
   projects: [],
+  projectMeta: {},
   activeProject: "",
   setActiveProject: () => {},
   addProject: () => null,
   removeProject: () => {},
   renameProject: () => {},
+  updateProject: () => {},
   refreshFromExpenses: () => {},
 });
 
-function loadList() {
+function normalizeEntry(item) {
+  if (typeof item === "string") return { name: item.trim(), ...DEFAULT_META };
+  if (item && typeof item === "object" && typeof item.name === "string") {
+    return {
+      name: item.name.trim(),
+      description: typeof item.description === "string" ? item.description : "",
+      color: item.color || DEFAULT_META.color,
+      icon: item.icon || DEFAULT_META.icon,
+    };
+  }
+  return null;
+}
+
+function loadRaw() {
   try {
     const raw = JSON.parse(localStorage.getItem(LIST_KEY) || "[]");
-    return Array.isArray(raw) ? raw.filter((n) => typeof n === "string") : [];
+    if (!Array.isArray(raw)) return [];
+    return raw.map(normalizeEntry).filter(Boolean);
   } catch {
     return [];
   }
 }
 
-function saveList(list) {
+function saveRaw(list) {
   try {
     localStorage.setItem(LIST_KEY, JSON.stringify(list));
   } catch {
@@ -40,13 +58,15 @@ function loadActive() {
   }
 }
 
+const lower = (s) => String(s || "").trim().toLowerCase();
+
 export function ProjectsProvider({ children }) {
-  const [projects, setProjects] = useState(loadList);
+  const [raw, setRaw] = useState(loadRaw);
   const [activeProject, setActiveState] = useState(loadActive);
 
   useEffect(() => {
-    saveList(projects);
-  }, [projects]);
+    saveRaw(raw);
+  }, [raw]);
 
   const setActiveProject = useCallback((name) => {
     const v = String(name || "").trim();
@@ -62,16 +82,16 @@ export function ProjectsProvider({ children }) {
   const addProject = useCallback((name) => {
     const n = String(name || "").trim().slice(0, 80);
     if (!n) return null;
-    setProjects((prev) =>
-      prev.some((p) => p.toLowerCase() === n.toLowerCase())
+    setRaw((prev) =>
+      prev.some((p) => lower(p.name) === lower(n))
         ? prev
-        : [...prev, n].sort((a, b) => a.localeCompare(b))
+        : [...prev, { name: n, ...DEFAULT_META }].sort((a, b) => a.name.localeCompare(b.name))
     );
     return n;
   }, []);
 
   const removeProject = useCallback((name) => {
-    setProjects((prev) => prev.filter((p) => p !== name));
+    setRaw((prev) => prev.filter((p) => p.name !== name));
     setActiveState((cur) => {
       if (cur !== name) return cur;
       try {
@@ -83,16 +103,28 @@ export function ProjectsProvider({ children }) {
     });
   }, []);
 
+  const updateProject = useCallback((name, meta) => {
+    setRaw((prev) =>
+      prev.map((p) =>
+        p.name === name
+          ? {
+              ...p,
+              description:
+                meta.description === undefined ? p.description : String(meta.description).slice(0, 200),
+              color: meta.color || p.color,
+              icon: meta.icon || p.icon,
+            }
+          : p
+      )
+    );
+  }, []);
+
   const renameProject = useCallback(
     async (from, to) => {
       const dst = String(to || "").trim().slice(0, 80);
       if (!dst || dst === from) return from;
-      const lower = (s) => String(s || "").trim().toLowerCase();
-      const conflict = projects.find(
-        (p) => lower(p) === lower(dst) && lower(p) !== lower(from)
-      );
-      if (conflict) {
-        throw new Error(`Ya existe el proyecto «${conflict}». Elige otro nombre.`);
+      if (raw.some((p) => lower(p.name) === lower(dst) && lower(p.name) !== lower(from))) {
+        throw new Error(`Ya existe el proyecto «${dst}». Elige otro nombre.`);
       }
 
       await api.post("/projects/rename", { from, to: dst });
@@ -108,16 +140,15 @@ export function ProjectsProvider({ children }) {
         /* ignore */
       }
 
-      const norm = (s) => String(s || "").trim().toLowerCase();
-      setProjects((prev) =>
-        [...new Set(prev.map((p) => (norm(p) === norm(from) ? dst : p)))].sort((a, b) =>
-          a.localeCompare(b)
-        )
+      setRaw((prev) =>
+        prev
+          .map((p) => (p.name === from ? { ...p, name: dst } : p))
+          .sort((a, b) => a.name.localeCompare(b.name))
       );
-      if (norm(activeProject) === norm(from)) setActiveProject(dst);
+      if (lower(activeProject) === lower(from)) setActiveProject(dst);
       return dst;
     },
-    [projects, activeProject, setActiveProject]
+    [raw, activeProject, setActiveProject]
   );
 
   const refreshFromExpenses = useCallback((expenses) => {
@@ -125,23 +156,38 @@ export function ProjectsProvider({ children }) {
       ...new Set((expenses || []).map((e) => String(e.project || "").trim()).filter(Boolean)),
     ];
     if (names.length === 0) return;
-    setProjects((prev) => {
-      const map = new Map(prev.map((p) => [p.toLowerCase(), p]));
+    setRaw((prev) => {
+      const map = new Map(prev.map((p) => [lower(p.name), p]));
       let changed = false;
       names.forEach((n) => {
-        if (!map.has(n.toLowerCase())) {
-          map.set(n.toLowerCase(), n);
+        if (!map.has(lower(n))) {
+          map.set(lower(n), { name: n, ...DEFAULT_META });
           changed = true;
         }
       });
       if (!changed) return prev;
-      return [...map.values()].sort((a, b) => a.localeCompare(b));
+      return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
     });
   }, []);
 
+  const projects = raw.map((p) => p.name);
+  const projectMeta = Object.fromEntries(
+    raw.map((p) => [p.name, { description: p.description, color: p.color, icon: p.icon }])
+  );
+
   return (
     <ProjectsCtx.Provider
-      value={{ projects, activeProject, setActiveProject, addProject, removeProject, renameProject, refreshFromExpenses }}
+      value={{
+        projects,
+        projectMeta,
+        activeProject,
+        setActiveProject,
+        addProject,
+        removeProject,
+        renameProject,
+        updateProject,
+        refreshFromExpenses,
+      }}
     >
       {children}
     </ProjectsCtx.Provider>

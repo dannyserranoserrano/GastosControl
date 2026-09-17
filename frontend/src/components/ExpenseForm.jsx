@@ -5,9 +5,18 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useCategories } from "../lib/categoriesContext";
-import { api } from "../lib/api";
+import { api, toBackendUrl } from "../lib/api";
+import { fileToDataUrl } from "../lib/localBackend";
 import { loadRules, suggestFor } from "../lib/autoRules";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Plus } from "lucide-react";
+
+const receiptsOf = (obj) => {
+  if (Array.isArray(obj?.receipts) && obj.receipts.length) return obj.receipts;
+  if (obj?.receipt_path) {
+    return [{ path: obj.receipt_path, url: obj.receipt_url || obj.receipt_path }];
+  }
+  return [];
+};
 
 export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar", extra, defaultProject }) {
 	const { categories } = useCategories();
@@ -21,13 +30,14 @@ export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar"
     project: defaultProject || "",
     notes: "",
     ...initial,
+    receipts: receiptsOf(initial),
   });
   const [history, setHistory] = useState([]);
   const rulesRef = useRef(loadRules());
   const touchedRef = useRef({ category: editing, project: editing });
 
   useEffect(() => {
-    if (initial) setForm((f) => ({ ...f, ...initial }));
+    if (initial) setForm((f) => ({ ...f, ...initial, receipts: receiptsOf(initial) }));
   }, [initial]);
 
   useEffect(() => {
@@ -73,11 +83,31 @@ export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar"
     setForm((f) => ({ ...f, [k]: v }));
   };
 
+  const addReceipts = async (files) => {
+    const list = [];
+    for (const file of Array.from(files || [])) {
+      try {
+        const dataUrl = await fileToDataUrl(file);
+        if (dataUrl) list.push({ path: dataUrl, url: dataUrl });
+      } catch {
+        /* ignore */
+      }
+    }
+    if (list.length) setForm((f) => ({ ...f, receipts: [...(f.receipts || []), ...list] }));
+  };
+
+  const removeReceipt = (i) =>
+    setForm((f) => ({ ...f, receipts: (f.receipts || []).filter((_, k) => k !== i) }));
+
   const handle = (e) => {
     e.preventDefault();
+    const receipts = form.receipts || [];
     const payload = {
       ...form,
       amount: Number(form.amount || 0),
+      receipts,
+      receipt_path: receipts[0]?.path || null,
+      receipt_url: receipts[0]?.url || receipts[0]?.path || null,
     };
     onSubmit(payload);
   };
@@ -158,6 +188,55 @@ export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar"
           </span>
         </p>
       )}
+
+      <div className="space-y-1.5">
+        <Label>
+          Tickets / imágenes <span className="text-[#8A8F96]">(opcional, varias)</span>
+        </Label>
+        <div className="flex flex-wrap gap-2">
+          {(form.receipts || []).map((r, i) => (
+            <div
+              key={i}
+              className="relative w-16 h-16 rounded-lg border border-[#E2DDD3] overflow-hidden bg-[#F2EFE9]"
+            >
+              <img
+                src={toBackendUrl(r.url || r.path)}
+                alt="ticket"
+                className="w-full h-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => removeReceipt(i)}
+                data-testid={`btn-remove-receipt-${i}`}
+                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white text-xs flex items-center justify-center hover:bg-black/80"
+                title="Quitar imagen"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <label
+            className="w-16 h-16 rounded-lg border-2 border-dashed border-[#E2DDD3] flex items-center justify-center cursor-pointer text-[#5C626A] hover:bg-[#FAF8F5]"
+            title="Añadir imágenes"
+          >
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              data-testid="input-receipts"
+              onChange={(e) => {
+                addReceipts(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <Plus className="w-4 h-4" />
+          </label>
+        </div>
+        <p className="text-[11px] text-[#5C626A]">
+          Puedes adjuntar varias fotos del mismo gasto (ticket, factura, justificante…).
+        </p>
+      </div>
 
       <div className="space-y-1.5">
         <Label>Notas</Label>

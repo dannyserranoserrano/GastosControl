@@ -51,7 +51,7 @@ export default function Expenses() {
   const [loading, setLoading] = useState(false);
   const [openAdd, setOpenAdd] = useState(false);
   const [editItem, setEditItem] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewImages, setPreviewImages] = useState([]);
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
 
   const duplicates = useMemo(() => findDuplicates(allExpenses), [allExpenses]);
@@ -374,6 +374,17 @@ export default function Expenses() {
               .filter((e) => !showDuplicatesOnly || duplicates.has(e.id))
               .map((e) => {
               const dupes = duplicates.get(e.id);
+              const receiptList = Array.isArray(e.receipts) && e.receipts.length
+                ? e.receipts
+                : e.receipt_path
+                  ? [{ path: e.receipt_path, url: e.receipt_url || e.receipt_path }]
+                  : [];
+              const firstReceipt = receiptList[0];
+              const openPreview = () => {
+                if (receiptList.length) {
+                  setPreviewImages(receiptList.map((r) => toBackendUrl(r.url || r.path)));
+                }
+              };
               return (
               <li
                 key={e.id}
@@ -384,18 +395,23 @@ export default function Expenses() {
               >
                 <button
                   className="w-14 h-14 rounded-xl bg-[#F2EFE9] border border-[#E2DDD3] flex items-center justify-center overflow-hidden shrink-0 relative"
-                  onClick={() => e.receipt_path && setPreviewUrl(toBackendUrl(e.receipt_path))}
+                  onClick={openPreview}
                   data-testid={`btn-preview-${e.id}`}
-                  title={e.receipt_path ? "Ver ticket" : "Sin imagen"}
+                  title={receiptList.length ? `Ver ticket(s) (${receiptList.length})` : "Sin imagen"}
                 >
-                  {e.receipt_path ? (
+                  {firstReceipt ? (
                     <img
-                      src={toBackendUrl(e.receipt_path)}
+                      src={toBackendUrl(firstReceipt.url || firstReceipt.path)}
                       alt="ticket"
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <ImageIcon className="w-5 h-5 text-[#5C626A]" />
+                  )}
+                  {receiptList.length > 1 && (
+                    <span className="absolute bottom-0 right-0 px-1 rounded-tl-md bg-[#1E293B]/80 text-white text-[10px] font-mono">
+                      {receiptList.length}
+                    </span>
                   )}
                   {dupes && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center" title="Posible duplicado">
@@ -488,14 +504,23 @@ export default function Expenses() {
       </Dialog>
 
       {/* Image preview */}
-      <Dialog open={!!previewUrl} onOpenChange={(o) => !o && setPreviewUrl(null)}>
+      <Dialog open={previewImages.length > 0} onOpenChange={(o) => !o && setPreviewImages([])}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="font-heading">Ticket</DialogTitle>
+            <DialogTitle className="font-heading">
+              Ticket{previewImages.length > 1 ? `s (${previewImages.length})` : ""}
+            </DialogTitle>
           </DialogHeader>
-          {previewUrl && (
-            <img src={previewUrl} alt="ticket" className="w-full max-h-[75vh] object-contain rounded-xl" />
-          )}
+          <div className="space-y-3 max-h-[75vh] overflow-auto">
+            {previewImages.map((src, i) => (
+              <img
+                key={i}
+                src={src}
+                alt={`ticket ${i + 1}`}
+                className="w-full object-contain rounded-xl border border-[#E2DDD3]"
+              />
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -4,6 +4,7 @@ import { findDuplicates } from "../lib/findDuplicates";
 import { useNotifications, NotificationSettings } from "../lib/useNotifications.jsx";
 import { useRecurring } from "../lib/useRecurring";
 import { useProjects } from "../lib/projectsContext";
+import RecurringForecast from "../components/RecurringForecast";
 import { useCategories } from "../lib/categoriesContext";
 import { COLOR_MAP } from "../lib/api";
 import { Card } from "../components/ui/card";
@@ -229,11 +230,8 @@ export default function Dashboard() {
           label={`Gastado (${stats.period_label || "mes"})`}
           value={eur(stats.period_spent ?? stats.total_spent)}
           sub={
-            <div className="mt-2">
-              <Progress value={Math.min(progress, 100)} className="h-2" />
-              <div className="text-xs mt-1 text-[#5C626A]">
-                {progress.toFixed(1)}% del presupuesto ({eur(stats.total_spent)} en total)
-              </div>
+            <div className="text-xs mt-1 text-[#5C626A]">
+              {eur(stats.total_spent)} en total
             </div>
           }
         />
@@ -251,6 +249,30 @@ export default function Dashboard() {
           value={stats.count}
         />
       </div>
+
+      {/* Estado actual */}
+      <Card data-testid="status-card" className="p-5 sm:p-6 rounded-2xl border-[#E2DDD3] bg-white">
+        <h3 className="font-heading font-bold text-lg mb-4">
+          Estado actual{activeProject ? ` · ${activeProject}` : ""}
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <Stat label="Presupuesto" value={eur(stats.budget)} />
+          <Stat
+            label={`Gastado (${stats.period_label || "mes"})`}
+            value={eur(stats.period_spent ?? stats.total_spent)}
+          />
+          <Stat
+            label={overBudget ? "Excedido" : "Disponible"}
+            value={eur(Math.abs(stats.remaining))}
+            tone={overBudget ? "text-red-700" : "text-emerald-700"}
+          />
+          <Stat label="Nº tickets" value={stats.count} />
+        </div>
+        <Progress value={Math.min(progress, 100)} className="h-3" />
+        <p className="text-xs text-[#5C626A] mt-2 font-mono">
+          {progressPct.toFixed(1)}% del presupuesto consumido en el {stats.period_label || "mes"}
+        </p>
+      </Card>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -299,6 +321,115 @@ export default function Dashboard() {
           </div>
         </Card>
       </div>
+
+      {/* Gráficos avanzados */}
+      {(() => {
+        const byMonthCat = {};
+        (allExpenses || []).forEach((e) => {
+          const m = String(e.date || "").slice(0, 7);
+          if (!/^\d{4}-\d{2}$/.test(m)) return;
+          const cat = e.category || "Otros";
+          byMonthCat[m] = byMonthCat[m] || {};
+          byMonthCat[m][cat] = (byMonthCat[m][cat] || 0) + Number(e.amount || 0);
+        });
+        const allMonths = Object.keys(byMonthCat).sort();
+        const months = allMonths.slice(-6);
+        if (months.length === 0) return null;
+
+        const catTotals = {};
+        months.forEach((m) => {
+          Object.entries(byMonthCat[m]).forEach(([c, v]) => {
+            catTotals[c] = (catTotals[c] || 0) + v;
+          });
+        });
+        const cats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).map(([c]) => c);
+        const colorOf = (cat) => {
+          const meta = categories.find((x) => x.name === cat);
+          return (COLOR_MAP[meta?.color || "stone"] || COLOR_MAP.stone).dot;
+        };
+        const advData = months.map((m) => {
+          const row = { month: m };
+          cats.forEach((c) => {
+            row[c] = Math.round((byMonthCat[m][c] || 0) * 100) / 100;
+          });
+          return row;
+        });
+
+        const comparison = allMonths.map((m, i) => {
+          const total = Object.values(byMonthCat[m]).reduce((s, v) => s + v, 0);
+          const prev = i > 0 ? Object.values(byMonthCat[allMonths[i - 1]]).reduce((s, v) => s + v, 0) : null;
+          return {
+            month: m,
+            total: Math.round(total * 100) / 100,
+            delta: prev !== null ? Math.round((total - prev) * 100) / 100 : null,
+            pct: prev ? ((total - prev) / prev) * 100 : null,
+          };
+        });
+        const recentComparison = comparison.slice(-6).reverse();
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2 p-5 sm:p-6 rounded-2xl border-[#E2DDD3] bg-white">
+              <h3 className="font-heading font-bold text-lg mb-4">Evolución por categoría</h3>
+              <div className="h-72" data-testid="chart-stacked">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={advData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#EEE9DF" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#5C626A" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "#5C626A" }} />
+                    <Tooltip formatter={(v) => eur(v)} contentStyle={{ borderRadius: 12, borderColor: "#E2DDD3" }} />
+                    {cats.map((c) => (
+                      <Bar key={c} dataKey={c} stackId="a" fill={colorOf(c)} />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {cats.map((c) => (
+                  <span key={c} className="inline-flex items-center gap-1.5 text-xs text-[#5C626A]">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colorOf(c) }} />
+                    {c}
+                  </span>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="p-5 sm:p-6 rounded-2xl border-[#E2DDD3] bg-white">
+              <h3 className="font-heading font-bold text-lg mb-4">Comparativa mes a mes</h3>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[#5C626A] text-[11px] font-mono uppercase tracking-widest">
+                    <th className="pb-2">Mes</th>
+                    <th className="pb-2 text-right">Total</th>
+                    <th className="pb-2 text-right">Δ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentComparison.map((r) => (
+                    <tr key={r.month} className="border-t border-[#E2DDD3]">
+                      <td className="py-2 font-mono">{r.month}</td>
+                      <td className="py-2 text-right font-mono">{eur(r.total)}</td>
+                      <td
+                        className={`py-2 text-right font-mono ${
+                          r.delta === null ? "text-[#5C626A]" : r.delta > 0 ? "text-red-700" : "text-emerald-700"
+                        }`}
+                      >
+                        {r.delta === null ? "—" : `${r.delta > 0 ? "+" : ""}${eur(r.delta)}`}
+                        {r.pct !== null ? (
+                          <span className="block text-[10px] opacity-80">
+                            {r.pct > 0 ? "+" : ""}
+                            {r.pct.toFixed(0)}%
+                          </span>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* Proyección a fin de periodo */}
       {(() => {
@@ -469,6 +600,8 @@ export default function Dashboard() {
           </Card>
         );
       })()}
+
+      <RecurringForecast reloadKey={allExpenses.length} />
 
       {/* Recent */}
       <Card className="p-5 sm:p-6 rounded-2xl border-[#E2DDD3] bg-white">

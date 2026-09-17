@@ -26,6 +26,16 @@ function slug(text) {
   return (text || "ticket").trim().replace(/\s+/g, "-").toLowerCase();
 }
 
+function receiptsOf(e) {
+  if (Array.isArray(e?.receipts) && e.receipts.length) return e.receipts;
+  if (e?.receipt_path) return [{ path: e.receipt_path, url: e.receipt_url || e.receipt_path }];
+  return [];
+}
+
+function srcOf(r) {
+  return toBackendUrl(r.url || r.path);
+}
+
 async function downloadImage(src, filename) {
   if (src.startsWith("data:")) {
     const a = document.createElement("a");
@@ -70,7 +80,11 @@ export default function Gallery() {
       if (category && category !== "all") params.category = category;
       if (activeProject) params.project = activeProject;
       const { data } = await api.get("/expenses", { params });
-      setItems(data.filter((e) => e.receipt_path));
+      setItems(
+        data.filter(
+          (e) => (Array.isArray(e.receipts) && e.receipts.length > 0) || e.receipt_path
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -87,7 +101,8 @@ export default function Gallery() {
   };
 
   const onDownload = (e) => {
-    const src = toBackendUrl(e.receipt_path);
+    const rs = receiptsOf(e);
+    const src = srcOf(rs[0]);
     const filename = `ticket-${slug(e.vendor)}-${e.date || ""}.${extOf(src)}`;
     downloadImage(src, filename);
     toast.success("Descargando…");
@@ -140,20 +155,27 @@ export default function Gallery() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" data-testid="gallery-grid">
-          {items.map((e) => (
+          {items.map((e) => {
+            const rs = receiptsOf(e);
+            return (
             <button
               key={e.id}
               data-testid={`gallery-item-${e.id}`}
               onClick={() => open(e)}
               className="text-left rounded-2xl border border-[#E2DDD3] bg-white overflow-hidden hover:shadow-md transition-shadow"
             >
-              <div className="aspect-[4/3] bg-[#F2EFE9]">
+              <div className="aspect-[4/3] bg-[#F2EFE9] relative">
                 <img
-                  src={toBackendUrl(e.receipt_path)}
+                  src={srcOf(rs[0])}
                   alt="ticket"
                   loading="lazy"
                   className="w-full h-full object-cover"
                 />
+                {rs.length > 1 && (
+                  <span className="absolute bottom-1 right-1 px-1.5 rounded bg-[#1E293B]/80 text-white text-[10px] font-mono">
+                    {rs.length}
+                  </span>
+                )}
               </div>
               <div className="p-3">
                 <p className="font-semibold text-sm text-[#1A1D20] truncate">
@@ -165,7 +187,8 @@ export default function Gallery() {
                 </div>
               </div>
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -181,16 +204,26 @@ export default function Gallery() {
                 <span>{active.date}</span>
                 <span className="font-heading font-bold text-[#1A1D20]">{eur(active.amount)}</span>
                 <CategoryBadge category={active.category} />
+                {receiptsOf(active).length > 1 && (
+                  <span className="text-xs">{receiptsOf(active).length} imágenes</span>
+                )}
               </div>
 
-              <div className="relative rounded-xl overflow-hidden border border-[#E2DDD3] bg-[#F2EFE9]">
-                <img
-                  data-testid="gallery-preview"
-                  src={toBackendUrl(active.receipt_path)}
-                  alt="ticket"
-                  className={`w-full ${zoomed ? "max-h-none" : "max-h-[70vh] object-contain"} cursor-zoom-in`}
-                  onClick={() => setZoomed((z) => !z)}
-                />
+              <div className="space-y-3 max-h-[70vh] overflow-auto">
+                {receiptsOf(active).map((r, i) => (
+                  <div
+                    key={i}
+                    className="relative rounded-xl overflow-hidden border border-[#E2DDD3] bg-[#F2EFE9]"
+                  >
+                    <img
+                      data-testid={i === 0 ? "gallery-preview" : `gallery-preview-${i}`}
+                      src={srcOf(r)}
+                      alt={`ticket ${i + 1}`}
+                      className={`w-full ${zoomed ? "max-h-none" : "max-h-[70vh] object-contain"} cursor-zoom-in`}
+                      onClick={() => setZoomed((z) => !z)}
+                    />
+                  </div>
+                ))}
               </div>
 
               <div className="flex flex-wrap justify-end gap-2">
