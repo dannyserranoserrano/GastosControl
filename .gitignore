@@ -4,6 +4,7 @@ node_modules/
 # Builds
 dist/
 build/
+.vite/
 
 # Entornos y secretos (¡no subirlos nunca!)
 .env
