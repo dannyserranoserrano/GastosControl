@@ -193,20 +193,24 @@ async function renameProject(user, body) {
   const to = String((body && body.to) || "").trim().slice(0, 80);
   if (!from || !to) throw fail(400, "Nombre inválido");
   if (from === to) return { ok: true, project: to, expenses: 0 };
+  const norm = (s) => String(s || "").trim().toLowerCase();
 
-  const { data: clash } = await supabase
+  const { data: candidates } = await supabase
     .from("expenses")
-    .select("id")
+    .select("project")
     .eq("user_id", user.id)
-    .eq("project", to)
-    .limit(1);
-  if (clash && clash.length > 0) throw fail(409, "Ya existe un proyecto con ese nombre");
+    .ilike("project", to);
+  const clash = (candidates || []).some(
+    (e) => norm(e.project) === norm(to) && norm(e.project) !== norm(from)
+  );
+  if (clash) throw fail(409, "Ya existe un proyecto con ese nombre");
 
   const { error: expErr } = await supabase
     .from("expenses")
     .update({ project: to })
     .eq("user_id", user.id)
-    .eq("project", from);
+    .ilike("project", from);
+  if (expErr && missingColumn(expErr, "project")) throw fail(500, expErr.message);
   if (expErr) throw fail(500, expErr.message);
 
   const { data: row } = await supabase
@@ -214,18 +218,24 @@ async function renameProject(user, body) {
     .select("*")
     .eq("user_id", user.id)
     .maybeSingle();
-  if (row && row.projects && row.projects[from]) {
+  if (row && row.projects) {
     const projects = { ...row.projects };
-    projects[to] = projects[from];
-    delete projects[from];
-    await upsertBudgetRow({ ...row, projects });
+    let changed = false;
+    for (const k of Object.keys(projects)) {
+      if (norm(k) === norm(from) && k !== to) {
+        projects[to] = projects[k];
+        delete projects[k];
+        changed = true;
+      }
+    }
+    if (changed) await upsertBudgetRow({ ...row, projects });
   }
 
   await supabase
     .from("categories")
     .update({ project: to })
     .eq("user_id", user.id)
-    .eq("project", from);
+    .ilike("project", from);
 
   return { ok: true, project: to };
 }
@@ -345,8 +355,9 @@ function sanitizeCategoryBudgets(raw) {
   return out;
 }
 
-async function upsertBudgetRow(doc) {
-  const optional = ["projects", "project_budgets", "period"];
+async function upsertBudgetRow(doc, { requireProjects = false } = {}) {
+  const optional = ["project_budgets", "period"];
+  if (!requireProjects) optional.unshift("projects");
   let attempt = { ...doc };
   for (let i = 0; i <= optional.length; i++) {
     const { error } = await supabase.from("budget").upsert(attempt, { onConflict: "user_id" });
@@ -385,12 +396,16 @@ async function putBudget(user, body) {
     updated_at: entry.updated_at,
     category_budgets: project ? row.category_budgets || {} : entry.category_budgets,
     period: project ? normalizePeriod(row.period) : entry.period,
-    projects: { ...(row.projects || {}) },
   };
-  if (project) doc.projects[project] = entry;
+  if (project) doc.projects = { ...(row.projects || {}), [project]: entry };
 
-  const error = await upsertBudgetRow(doc);
-  if (error) throw fail(500, error.message);
+  const error = await upsertBudgetRow(doc, { requireProjects: !!project });
+  if (error) {
+    const msg = missingColumn(error, "projects")
+      ? "Falta actualizar la base de datos de Supabase: ejecuta supabase/schema.sql (columna budget.projects)."
+      : error.message;
+    throw fail(500, msg);
+  }
 
   return {
     ...entry,

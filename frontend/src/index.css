@@ -213,3 +213,52 @@ body {
     linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
 }
 
+/* =====================================================================
+   Impresión / Exportar a PDF
+   Solo se imprime el área marcada con #print-area.
+   ===================================================================== */
+@media print {
+  body.printing-report header,
+  body.printing-report .no-print {
+    display: none !important;
+  }
+
+  body.printing-report * {
+    visibility: hidden;
+  }
+
+  body.printing-report #print-area,
+  body.printing-report #print-area * {
+    visibility: visible;
+  }
+
+  body.printing-report #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0 !important;
+  }
+
+  body.printing-report {
+    background: #fff !important;
+    background-image: none !important;
+  }
+
+  body.printing-report #print-area .shadow,
+  body.printing-report #print-area .shadow-sm,
+  body.printing-report #print-area .shadow-md,
+  body.printing-report #print-area .shadow-lg {
+    box-shadow: none !important;
+  }
+
+  body.printing-report #print-area .recharts-surface {
+    overflow: visible;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}
+
+

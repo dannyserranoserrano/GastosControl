@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { Wallet, Save } from "lucide-react";
 import { PERIODS, periodLabel, normalizePeriod } from "../lib/period";
 import CategoryManager from "../components/CategoryManager";
+import GoalsManager from "../components/GoalsManager";
+import BackupManager from "../components/BackupManager";
 import CategoryBadge from "../components/CategoryBadge";
 
 function buildCatBudgets(raw) {
@@ -52,18 +54,32 @@ export default function BudgetPage() {
 
   useEffect(() => { load(); }, [activeProject]); // eslint-disable-line
 
+  const verifySaved = async (expectedTotal) => {
+    const params = activeProject ? { project: activeProject } : {};
+    const { data } = await api.get("/budget", { params });
+    return Number(data.total || 0) === Number(expectedTotal || 0);
+  };
+
   const save = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.put("/budget", {
+      const payload = {
         total: Number(total || 0),
         alert_at: Number(alertAt || 80),
         category_budgets: buildCatBudgets(catBudgets),
         period,
         project: activeProject,
-      });
-      toast.success(activeProject ? `Presupuesto de «${activeProject}» actualizado` : "Presupuesto actualizado");
+      };
+      await api.put("/budget", payload);
+      const okTotal = await verifySaved(payload.total);
+      if (okTotal) {
+        toast.success(activeProject ? `Presupuesto de «${activeProject}» actualizado` : "Presupuesto actualizado");
+      } else {
+        toast.error(
+          "El importe no se guardó. Si usas Supabase, ejecuta supabase/schema.sql (columna budget.projects)."
+        );
+      }
       load();
     } catch (err) {
       toast.error(err?.response?.data?.detail || err?.message || "Error al guardar");
@@ -75,14 +91,17 @@ export default function BudgetPage() {
   const saveCatBudgets = async () => {
     setSaving(true);
     try {
-      await api.put("/budget", {
+      const payload = {
         total: Number(total || 0),
         alert_at: Number(alertAt || 80),
         category_budgets: buildCatBudgets(catBudgets),
         period,
         project: activeProject,
-      });
-      toast.success("Presupuestos por categoría actualizados");
+      };
+      await api.put("/budget", payload);
+      const okTotal = await verifySaved(payload.total);
+      if (okTotal) toast.success("Presupuestos por categoría actualizados");
+      else toast.error("No se pudieron guardar los cambios (revisa la migración de Supabase).");
       load();
     } catch (err) {
       toast.error(err?.response?.data?.detail || err?.message || "Error al guardar");
@@ -266,7 +285,10 @@ export default function BudgetPage() {
           })}
         </div>
       </Card>
+
+      <GoalsManager />
       <CategoryManager />
+      <BackupManager />
     </div>
   );
 }

@@ -87,12 +87,12 @@ export function ProjectsProvider({ children }) {
     async (from, to) => {
       const dst = String(to || "").trim().slice(0, 80);
       if (!dst || dst === from) return from;
-      if (
-        projects.some(
-          (p) => p.toLowerCase() === dst.toLowerCase() && p !== from
-        )
-      ) {
-        throw new Error("Ya existe un proyecto con ese nombre");
+      const lower = (s) => String(s || "").trim().toLowerCase();
+      const conflict = projects.find(
+        (p) => lower(p) === lower(dst) && lower(p) !== lower(from)
+      );
+      if (conflict) {
+        throw new Error(`Ya existe el proyecto «${conflict}». Elige otro nombre.`);
       }
 
       await api.post("/projects/rename", { from, to: dst });
@@ -108,12 +108,13 @@ export function ProjectsProvider({ children }) {
         /* ignore */
       }
 
+      const norm = (s) => String(s || "").trim().toLowerCase();
       setProjects((prev) =>
-        [...new Set(prev.map((p) => (p === from ? dst : p)))].sort((a, b) =>
+        [...new Set(prev.map((p) => (norm(p) === norm(from) ? dst : p)))].sort((a, b) =>
           a.localeCompare(b)
         )
       );
-      if (activeProject === from) setActiveProject(dst);
+      if (norm(activeProject) === norm(from)) setActiveProject(dst);
       return dst;
     },
     [projects, activeProject, setActiveProject]

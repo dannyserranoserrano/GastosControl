@@ -289,13 +289,17 @@ async function dispatch(method, url, body, config) {
     const to = String((body && body.to) || "").trim().slice(0, 80);
     if (!from || !to) throw fail(400, "Nombre inválido");
     if (from === to) return { ok: true, project: to, expenses: 0 };
+    const norm = (s) => String(s || "").trim().toLowerCase();
+
     const list = await readExpenses();
-    if (list.some((e) => (e.project || "") === to)) {
-      throw fail(409, "Ya existe un proyecto con ese nombre");
-    }
+    const clash = list.some(
+      (e) => norm(e.project) === norm(to) && norm(e.project) !== norm(from)
+    );
+    if (clash) throw fail(409, "Ya existe un proyecto con ese nombre");
+
     let changed = 0;
     list.forEach((e) => {
-      if ((e.project || "") === from) {
+      if (norm(e.project) === norm(from)) {
         e.project = to;
         changed++;
       }
@@ -303,18 +307,28 @@ async function dispatch(method, url, body, config) {
     if (changed) await persistExpenses(list);
 
     const b = (await dbGet(K.budget)) || {};
-    if (b.projects && b.projects[from]) {
-      b.projects[to] = b.projects[from];
-      delete b.projects[from];
-      await dbSet(K.budget, b);
+    if (b.projects) {
+      let budgetChanged = false;
+      for (const k of Object.keys(b.projects)) {
+        if (norm(k) === norm(from) && k !== to) {
+          b.projects[to] = b.projects[k];
+          delete b.projects[k];
+          budgetChanged = true;
+        }
+      }
+      if (budgetChanged) await dbSet(K.budget, b);
     }
 
     const map = (await dbGet(K.projectCategories)) || {};
-    if (map[from]) {
-      map[to] = map[from];
-      delete map[from];
-      await dbSet(K.projectCategories, map);
+    let catChanged = false;
+    for (const k of Object.keys(map)) {
+      if (norm(k) === norm(from) && k !== to) {
+        map[to] = map[k];
+        delete map[k];
+        catChanged = true;
+      }
     }
+    if (catChanged) await dbSet(K.projectCategories, map);
 
     return { ok: true, project: to, expenses: changed };
   }

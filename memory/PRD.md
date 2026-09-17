@@ -54,6 +54,10 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Proyectos como espacios de trabajo: selector global; cada proyecto tiene sus propios gastos, presupuesto (total, categorías y periodo) y estadísticas
 - [x] Categorías por proyecto: cada proyecto gestiona sus propias categorías; borrar una en un proyecto no afecta a los demás
 - [x] Renombrar proyectos: al cambiar el nombre se actualizan gastos, presupuesto, categorías y plantillas recurrentes
+- [x] Objetivos de ahorro: objetivo e importe, aportaciones con fecha/nota, progreso, fecha límite y ritmo estimado (por proyecto)
+- [x] Desviación presupuesto vs real (en el Informe mensual): por categoría (tope vs gasto del mes) y por proyecto, con desviación absoluta y estado
+- [x] Copia de seguridad: exportar/importar todos los datos locales en JSON (gastos, presupuestos, categorías, proyectos, objetivos, recurrentes, reglas y preferencias)
+- [x] Exportar el informe mensual a PDF (impresión del navegador con estilos de impresión)
 - [x] Notificaciones proactivas (browser notifications + panel de configuración, avisos de presupuesto y proyección)
 - [x] PWA: instalable, offline (shell precacheado) y manifest con iconos
 - [x] Galería dedicada de tickets

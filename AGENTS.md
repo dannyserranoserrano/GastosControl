@@ -106,7 +106,9 @@ GastosApp/
         │   ├── constants.js     (COLOR_MAP, ALLOWED_ICONS/COLORS, DEFAULT_CATEGORIES, eur)
         │   ├── findDuplicates.js (detección de gastos duplicados por importe/fecha/proveedor)
         │   ├── autoRules.js     (sugerencia de categoría/proyecto por historial y reglas)
+        │   ├── backup.js        (exportar/importar copia de seguridad en JSON)
         │   ├── csv.js           (parseo/validación de CSV para importación)
+        │   ├── goals.js         (objetivos de ahorro y aportaciones, por proyecto)
         │   ├── recurring.js     (plantillas y cálculo de gastos recurrentes pendientes)
         │   ├── period.js        (rangos de periodo del presupuesto: semanal/mensual/anual)
         │   ├── projectsContext.jsx (proyectos y proyecto activo)
@@ -127,7 +129,9 @@ GastosApp/
         │   ├── CategoryManager.jsx
         │   ├── CategoryBadge.jsx
         │   ├── AutoRulesManager.jsx
+        │   ├── BackupManager.jsx
         │   ├── CsvImportDialog.jsx
+        │   ├── GoalsManager.jsx
         │   ├── RecurringManager.jsx
         │   ├── ThemeToggle.jsx
         │   ├── ProjectSwitcher.jsx
@@ -218,6 +222,10 @@ uvicorn server:app --reload
 - **Proyectos como espacios de trabajo** (`projectsContext.jsx` + `ProjectSwitcher.jsx`): lista de proyectos (localStorage `gastocontrol:projects`) y proyecto activo (`gastocontrol:active_project`), seleccionable desde el Header o desde el filtro de `/gastos`. Cuando hay un proyecto activo, `GET /expenses`, `GET /stats` y `GET/PUT /budget` reciben `project=<nombre>` y devuelven solo sus datos. Cada proyecto guarda su propio presupuesto (total, `alert_at`, `category_budgets`, `period`) en `budget.projects[nombre]` (jsonb en Supabase, `projects` dict en Mongo/local); los gastos nuevos se etiquetan con el proyecto activo. «Todos los proyectos» = sin filtro y presupuesto general.
 - **Categorías por proyecto**: las categorías también son por proyecto. `GET/POST /categories` y `DELETE /categories/{name}` aceptan `project`; al borrar solo se comprueban los gastos de ese proyecto. Local: `gastocontrol:categories` (general) + `gastocontrol:project_categories`; Supabase: columna `project` en `categories` con unique `(user_id, project, name)`; Mongo: campo `project`. `CategoriesProvider` recarga al cambiar de proyecto (por eso `ProjectsProvider` lo envuelve en `App.jsx`).
 - **Renombrar proyectos**: `POST /projects/rename` `{ from, to }` (valida duplicados) reetiqueta los gastos, la clave de `budget.projects`, las categorías del proyecto y las plantillas recurrentes (estas en cliente). Desde `ProjectSwitcher` (botón lápiz) se edita el nombre en línea; `renameProject` del contexto actualiza la lista, el proyecto activo y los recurrentes.
+- **Objetivos de ahorro** (`goals.js` + `GoalsManager.jsx`): por proyecto, en `/presupuesto`. Cada objetivo tiene importe, fecha límite opcional y aportaciones (importe/fecha/nota); muestra progreso, restante y ritmo mensual estimado. Se guardan en `localStorage` (`gastocontrol:goals`, mapa por proyecto).
+- **Desviación presupuesto vs real**: tarjeta en `/informe` (Informe mensual) con el tope por categoría vs el gasto del mes (desviación absoluta, % y estado) y, en modo «Todos los proyectos», una tabla por proyecto (presupuesto vs gasto del mes).
+- **Copia de seguridad** (`backup.js` + `BackupManager.jsx`): en `/presupuesto`, exporta/importa en JSON los datos locales (IndexedDB `gastocontrol:categories|project_categories|expenses|budget` y claves `localStorage` de proyectos, objetivos, recurrentes, reglas y preferencias). La restauración reemplaza los datos locales y recarga la app; con sesión Supabase solo afecta al almacenamiento local del dispositivo.
+- **Exportar informe a PDF**: botón «PDF» en `/informe` que usa `window.print()`. Al imprimir quita temporalmente la clase `.dark` (tema claro), añade `body.printing-report` y el CSS de `@media print` en `index.css` deja visible solo `#print-area` (con `.no-print` oculto).
 - **Galería de tickets** (`/galeria`): grid de boletos escaneados con búsqueda, filtro por categoría, vista previa con zoom y descarga.
 - El backend FastAPI (opcional) pasó un smoke test previo (ver `test_reports/iteration_1.json`).
 

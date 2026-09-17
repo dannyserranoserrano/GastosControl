@@ -6,6 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import io
 import csv
+import re
 import json
 import base64
 import logging
@@ -368,17 +369,31 @@ async def rename_project(payload: ProjectRename):
         raise HTTPException(status_code=400, detail="Nombre inválido")
     if src == dst:
         return {"ok": True, "project": dst, "expenses": 0}
-    clash = await db.expenses.count_documents({"project": dst})
-    if clash > 0:
+
+    def exact_ci(value: str):
+        return {"$regex": "^" + re.escape(value) + "$", "$options": "i"}
+
+    norm = lambda s: str(s or "").strip().lower()  # noqa: E731
+
+    candidates = await db.expenses.find({"project": exact_ci(dst)}, {"project": 1}).to_list(100)
+    clash = any(norm(d.get("project")) == norm(dst) and norm(d.get("project")) != norm(src) for d in candidates)
+    if clash:
         raise HTTPException(status_code=409, detail="Ya existe un proyecto con ese nombre")
-    res = await db.expenses.update_many({"project": src}, {"$set": {"project": dst}})
+
+    res = await db.expenses.update_many({"project": exact_ci(src)}, {"$set": {"project": dst}})
+
     doc = await db.budget.find_one({"_id": "singleton"}) or {}
     projects = dict(doc.get("projects") or {})
-    if src in projects:
-        projects[dst] = projects.pop(src)
+    changed = False
+    for k in list(projects.keys()):
+        if norm(k) == norm(src) and k != dst:
+            projects[dst] = projects.pop(k)
+            changed = True
+    if changed:
         await db.budget.update_one({"_id": "singleton"}, {"$set": {"projects": projects}})
+
     try:
-        await db.categories.update_many({"project": src}, {"$set": {"project": dst}})
+        await db.categories.update_many({"project": exact_ci(src)}, {"$set": {"project": dst}})
     except Exception:
         pass
     return {"ok": True, "project": dst, "expenses": res.modified_count}
