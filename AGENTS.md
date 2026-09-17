@@ -134,6 +134,7 @@ GastosApp/
         │   ├── GoalsManager.jsx
         │   ├── RecurringManager.jsx
         │   ├── RecurringForecast.jsx
+        │   ├── RecurringOverdueAlert.jsx
         │   ├── MonthCalendar.jsx
         │   ├── MonthCloseReminder.jsx
         │   ├── ThemeToggle.jsx
@@ -240,6 +241,7 @@ uvicorn server:app --reload
 - **Copia de seguridad** (`backup.js` + `BackupManager.jsx`): en `/presupuesto`, exporta/importa en JSON los datos locales (IndexedDB `gastocontrol:categories|project_categories|expenses|budget` y claves `localStorage` de proyectos, objetivos, recurrentes, reglas y preferencias). La restauración reemplaza los datos locales y recarga la app; con sesión Supabase solo afecta al almacenamiento local del dispositivo.
 - **Exportar informe a PDF**: botón «PDF» en `/informe` que usa `window.print()`. Al imprimir quita temporalmente la clase `.dark` (tema claro), añade `body.printing-report` y el CSS de `@media print` en `index.css` deja visible solo `#print-area` (con `.no-print` oculto).
 - **Previsión de recurrentes** (`RecurringForecast.jsx`): tarjeta en el Panel con las plantillas recurrentes activas (del proyecto activo o todas), total mensual, importe ya registrado vs pendiente y estado por plantilla (`Registrado`/`Pendiente`/`Vencido`). Se recarga al cambiar de proyecto o al actualizarse los gastos.
+- **Alertas de recurrentes vencidos** (`RecurringOverdueAlert.jsx`): banner en el Panel cuando hay recurrentes activos cuyo día ya pasó y no se generaron este mes; permite **Generar** uno o **Generar todos** (usa `generateRecurringNow` de `useRecurring.js`) y lanza una notificación del navegador (una vez por mes/proyecto) si hay permiso.
 - **Varios tickets por gasto**: cada gasto guarda `receipts: [{ path, url }]` (además de `receipt_path`/`receipt_url` del primero, por compatibilidad). `ExpenseForm` permite adjuntar/eliminar varias imágenes (redimensionadas a data-URL en local; subidas a Storage en Supabase). La lista de `/gastos` muestra la primera con contador y previsualiza todas; la galería agrupa varias por gasto. Requiere la columna `expenses.receipts` (jsonb) en Supabase (con fallback si falta).
 - **Galería de tickets** (`/galeria`): grid de boletos escaneados con búsqueda, filtro por categoría, vista previa con zoom y descarga.
 - El backend FastAPI (opcional) pasó un smoke test previo (ver `test_reports/iteration_1.json`).

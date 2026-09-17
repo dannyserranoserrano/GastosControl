@@ -5,6 +5,7 @@ import { useNotifications } from "../lib/useNotifications.jsx";
 import { useRecurring } from "../lib/useRecurring";
 import { useProjects } from "../lib/projectsContext";
 import RecurringForecast from "../components/RecurringForecast";
+import RecurringOverdueAlert from "../components/RecurringOverdueAlert";
 import MonthCloseReminder from "../components/MonthCloseReminder";
 import { useCategories } from "../lib/categoriesContext";
 import { COLOR_MAP } from "../lib/api";
@@ -112,6 +113,8 @@ export default function Dashboard() {
       </div>
 
       <MonthCloseReminder />
+
+      <RecurringOverdueAlert onGenerated={load} />
 
       {stats.budget > 0 && (overBudget || warnBudget) && (
         <div

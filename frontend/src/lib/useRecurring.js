@@ -3,6 +3,41 @@ import { api } from "./api";
 import { toast } from "sonner";
 import { loadTemplates, saveTemplates, pendingFor } from "./recurring";
 
+const pad = (n) => String(n).padStart(2, "0");
+
+/**
+ * Genera un recurrente para el mes actual (si no se ha generado ya) y lo marca.
+ * Devuelve true si se creó el gasto.
+ */
+export async function generateRecurringNow(template) {
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+  const generated = new Set(template.generated || []);
+  if (generated.has(ym)) return false;
+
+  const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const day = Math.min(Math.max(1, Number(template.day) || 1), dim);
+
+  await api.post("/expenses", {
+    vendor: template.vendor || "",
+    amount: Number(template.amount || 0),
+    category: template.category || "Otros",
+    project: template.project || "",
+    notes: template.notes || "",
+    date: `${ym}-${pad(day)}`,
+  });
+
+  const tpls = loadTemplates();
+  saveTemplates(
+    tpls.map((t) =>
+      t.id === template.id
+        ? { ...t, generated: [...new Set([...(t.generated || []), ym])] }
+        : t
+    )
+  );
+  return true;
+}
+
 /**
  * Genera los gastos recurrentes pendientes al montar. Se ejecuta una sola vez por montaje
  * y marca cada periodo generado para no duplicar.

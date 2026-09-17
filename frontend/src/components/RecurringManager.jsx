@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { api } from "../lib/api";
 import { useCategories } from "../lib/categoriesContext";
 import { useProjects } from "../lib/projectsContext";
 import { Button } from "./ui/button";
@@ -8,6 +7,7 @@ import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { loadTemplates, saveTemplates, templateId, ymOf } from "../lib/recurring";
+import { generateRecurringNow } from "../lib/useRecurring";
 import { toast } from "sonner";
 import { Repeat, Plus, Trash2, Zap } from "lucide-react";
 
@@ -65,29 +65,13 @@ export default function RecurringManager({ onChanged }) {
     persist(templates.map((t) => (t.id === id ? { ...t, active: !t.active } : t)));
 
   const generateNow = async (t) => {
-    const ym = ymOf();
-    const generated = new Set(t.generated || []);
-    if (generated.has(ym)) {
-      toast.info("Ya se generó este mes para esta plantilla");
-      return;
-    }
-    const [y, m] = ym.split("-").map(Number);
-    const dim = new Date(y, m, 0).getDate();
-    const day = Math.min(Math.max(1, Number(t.day) || 1), dim);
     try {
-      await api.post("/expenses", {
-        vendor: t.vendor,
-        amount: Number(t.amount || 0),
-        category: t.category,
-        project: t.project || "",
-        notes: t.notes || "",
-        date: `${ym}-${String(day).padStart(2, "0")}`,
-      });
-      persist(
-        templates.map((x) =>
-          x.id === t.id ? { ...x, generated: [...new Set([...(x.generated || []), ym])] } : x
-        )
-      );
+      const ok = await generateRecurringNow(t);
+      if (!ok) {
+        toast.info("Ya se generó este mes para esta plantilla");
+        return;
+      }
+      setTemplates(loadTemplates());
       toast.success("Gasto generado");
       onChanged?.();
     } catch {
