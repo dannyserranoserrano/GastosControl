@@ -72,6 +72,8 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Detección real de guardado: verificación tras crear (existe en BD y con el proyecto correcto)
 - [x] Notificaciones proactivas (browser notifications + panel de configuración, avisos de presupuesto y proyección)
 - [x] PWA: instalable, offline (shell precacheado) y manifest con iconos
+- [x] Instalación como app: banner «Instalar» (Android/escritorio) e indicaciones para Safari en iOS (con iconos apple-touch multi-tamaño)
+- [x] Plantillas de despliegue en `deploy/` (Apache + HTTPS + systemd del OCR + DuckDNS) sin secretos
 - [x] Galería dedicada de tickets
 
 ## Backlog

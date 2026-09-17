@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import Header from "@/components/Header";
 import MigrationBanner from "@/components/MigrationBanner";
 import QuickAddButton from "@/components/QuickAddButton";
+import InstallPrompt from "@/components/InstallPrompt";
 import { CategoriesProvider } from "@/lib/categoriesContext";
 import { ProjectsProvider } from "@/lib/projectsContext";
 import { AuthProvider } from "@/lib/authContext";
@@ -34,6 +35,7 @@ function App() {
           <ProjectsProvider>
             <CategoriesProvider>
               <Header />
+              <InstallPrompt />
               <MigrationBanner />
               <Suspense fallback={<PageLoader />}>
                 <Routes>

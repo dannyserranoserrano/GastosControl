@@ -86,6 +86,12 @@ GastosApp/
 │   └── iteration_1.json         (resultado smoke test backend)
 ├── supabase/
 │   └── schema.sql               (tablas + RLS + bucket de Storage)
+├── deploy/                      (plantillas de despliegue: vhosts Apache, systemd, DuckDNS)
+│   ├── README.md
+│   ├── apache-gastoscontrol.conf
+│   ├── apache-gastoscontrol-le-ssl.conf
+│   ├── gastocontrol-ocr.service
+│   └── duckdns-update.sh
 ├── backend/                     (opcional: API + OCR + sincronización)
 │   ├── .env                     (MONGO_URL, DB_NAME, CORS_ORIGINS, EMERGENT_LLM_KEY)
 │   ├── requirements.txt
@@ -143,6 +149,7 @@ GastosApp/
         │   ├── BudgetSettings.jsx
         │   ├── MobileAlertSettings.jsx
         │   ├── QuickAddButton.jsx
+        │   ├── InstallPrompt.jsx
         │   └── ui/              (button, card, input, label, textarea, progress, select, dialog, alert-dialog, dropdown-menu)
         └── pages/
             ├── Dashboard.jsx    (/)
@@ -241,6 +248,8 @@ uvicorn server:app --reload
 - **Vista de calendario** (`Calendar.jsx` + `MonthCalendar.jsx`): página propia `/calendario` con selector de mes (y proyecto activo); rejilla mensual (semana empieza en lunes) con el gasto por día y detalle al pulsar un día. Resumen de total, nº de gastos y días con gasto.
 - **Navegación agrupada** (`Header.jsx` + `components/ui/dropdown-menu.jsx`): escritorio con grupos desplegables — **Panel**, **Gastos ▾** (Todos los gastos, Escanear, Tickets), **Análisis ▾** (Informe mensual, Calendario) y **Ajustes** (enlace directo) — más CTA **Escanear**, tema y usuario. En móvil (`< lg`) se muestra una **hamburguesa** que abre un drawer lateral (por la derecha, fuera del `<header>` para que el `backdrop-blur` no lo confine). El selector de proyecto ya no está en la cabecera; se gestiona en Ajustes.
 - **Ajustes** (`Settings.jsx`, ruta `/ajustes`): página única con pestañas (por `?tab=`) — **Proyecto** (`ProjectSettings.jsx`), **Presupuesto** (`BudgetSettings.jsx`: importe, periodo, umbral y topes por categoría), **Categorías** (`CategoryManager`), **Ahorro** (`GoalsManager`), **Notificaciones** (`NotificationSettingsPanel` con `useNotificationPrefs`), **Alertas** (`MobileAlertSettings.jsx`) y **Datos** (`BackupManager`). `/presupuesto` redirige a `/ajustes?tab=presupuesto`.
+- **PWA instalable** (`InstallPrompt.jsx` + `vite-plugin-pwa`): service worker con precache (offline), manifest con iconos 192/512 + maskable y **iconos iOS** multi-tamaño (`apple-touch-icon-120/152/167/180.png`, sin transparencia). `InstallPrompt` captura `beforeinstallprompt` y muestra un banner **Instalar** (Android/escritorio); en iOS muestra las instrucciones de Safari (Compartir → Añadir a pantalla de inicio), avisando de que Chrome/Firefox en iPhone no lo permiten. El build **no usa `manualChunks`** (un chunk circular `vendor↔react` rompía la app en producción).
+- **Despliegue**: plantillas sin secretos en `deploy/` (vhosts Apache con `FallbackResource` + `Alias /icons/`, unidad systemd del OCR y script DuckDNS) y guía en `deploy/README.md`; ver también `DEPLOY_HOME.md`.
 - **Copia de seguridad** (`backup.js` + `BackupManager.jsx`): en `/presupuesto`, exporta/importa en JSON los datos locales (IndexedDB `gastocontrol:categories|project_categories|expenses|budget` y claves `localStorage` de proyectos, objetivos, recurrentes, reglas y preferencias). La restauración reemplaza los datos locales y recarga la app; con sesión Supabase solo afecta al almacenamiento local del dispositivo.
 - **Exportar informe a PDF**: botón «PDF» en `/informe` que usa `window.print()`. Al imprimir quita temporalmente la clase `.dark` (tema claro), añade `body.printing-report` y el CSS de `@media print` en `index.css` deja visible solo `#print-area` (con `.no-print` oculto).
 - **Previsión de recurrentes** (`RecurringForecast.jsx`): tarjeta en el Panel con las plantillas recurrentes activas (del proyecto activo o todas), total mensual, importe ya registrado vs pendiente y estado por plantilla (`Registrado`/`Pendiente`/`Vencido`). Se recarga al cambiar de proyecto o al actualizarse los gastos.

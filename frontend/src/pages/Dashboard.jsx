@@ -286,7 +286,7 @@ export default function Dashboard() {
             <h3 className="font-heading font-bold text-lg">Gasto por categoría</h3>
             <span className="text-xs font-mono text-[#5C626A]">EUR</span>
           </div>
-          <div className="h-64" data-testid="chart-categories">
+          <div className="h-64 w-full min-w-0" data-testid="chart-categories">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stats.by_category} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#EEE9DF" vertical={false} />
@@ -307,7 +307,7 @@ export default function Dashboard() {
 
         <Card className="p-5 sm:p-6 rounded-2xl border-[#E2DDD3] bg-white">
           <h3 className="font-heading font-bold text-lg mb-4">Evolución mensual</h3>
-          <div className="h-64" data-testid="chart-monthly">
+          <div className="h-64 w-full min-w-0" data-testid="chart-monthly">
             {stats.monthly.length === 0 ? (
               <div className="h-full flex items-center justify-center text-sm text-[#5C626A]">
                 Aún no hay datos suficientes
@@ -376,7 +376,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2 p-5 sm:p-6 rounded-2xl border-[#E2DDD3] bg-white">
               <h3 className="font-heading font-bold text-lg mb-4">Evolución por categoría</h3>
-              <div className="h-72" data-testid="chart-stacked">
+              <div className="h-72 w-full min-w-0" data-testid="chart-stacked">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={advData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#EEE9DF" vertical={false} />
