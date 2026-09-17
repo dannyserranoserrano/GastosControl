@@ -1,0 +1,26 @@
+{
+  "summary": "Backend-only smoke test of ObraControl API. All 13 requested checks passed including CRUD, filters, stats, budget, CSV export, category defaulting, receipt image upload with Gemini OCR extraction, and file download.",
+  "tested_scope": ["backend", "integration"],
+  "passed": [
+    "GET /api/ -> 200 with categories list (6 Spanish categories)",
+    "POST /api/expenses -> 200, creates expense with UUID id, returns full model",
+    "POST /api/expenses with unknown category 'NoExiste' -> defaults to 'Otros'",
+    "GET /api/expenses -> 200 lists all expenses sorted by date desc",
+    "GET /api/expenses?category=Materiales -> 200, filters correctly",
+    "GET /api/expenses?q=Leroy -> 200, regex vendor/notes search works",
+    "GET /api/expenses/{id} -> 200 returns single expense",
+    "PATCH /api/expenses/{id} -> 200 updates amount+notes",
+    "DELETE /api/expenses/{id} -> 200 {ok:true}",
+    "PUT /api/budget -> 200 sets total=50000, GET /api/budget returns it",
+    "GET /api/stats -> 200 returns total_spent, count, budget, remaining, progress, by_category (6 items in fixed order), monthly list",
+    "GET /api/expenses/export -> 200 text/csv with Content-Disposition attachment, UTF-8 BOM, ; delimited, Spanish headers",
+    "POST /api/receipts/scan (real receipt JPEG) -> 200, uploaded to Emergent Object Storage, Gemini 3.1 Pro extracted vendor=LEROY MERLIN, date=2026-02-10, amount=101.04 (float), category=Materiales (valid), 5 items with description+price, notes",
+    "GET /api/files/{path} -> 200 image/jpeg, 31049 bytes (matches upload)"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "not tested"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}
+

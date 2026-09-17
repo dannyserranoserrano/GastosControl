@@ -1,0 +1,96 @@
+{
+  "project_identity": {
+    "name": "GastoControl - Gestor de Gastos",
+    "concept": "Warm Masonry & Tactile Expense Control",
+    "target_audience": "Individuals, couples, and small teams tracking personal or project expenses who need instant AI receipt extraction, budget control, and clear category breakdowns.",
+    "emotional_tone": "Grounded, tactical, trustworthy, warm craftsmanship meets financial precision."
+  },
+  "theme": {
+    "mode": "light_preferred_with_dark_accents",
+    "archetype": "Organic & Earthy Masonry (Warm Stone + Terracotta Clay + Deep Slate)",
+    "primary_palette": {
+      "background_light": "#FAF8F5",
+      "surface_card": "#FFFFFF",
+      "surface_muted": "#F2EFE9",
+      "border": "#E2DDD3",
+      "text_primary": "#1A1D20",
+      "text_secondary": "#5C626A",
+      "terracotta_primary": "#D95D39",
+      "terracotta_hover": "#C24C2A",
+      "amber_warning": "#D97706",
+      "emerald_safe": "#16A34A",
+      "slate_blueprint": "#1E293B",
+      "slate_accent": "#0F172A"
+    }
+  },
+  "typography": {
+    "font_family_heading": "'Outfit', 'Cabinet Grotesk', -apple-system, sans-serif",
+    "font_family_body": "'Manrope', 'Work Sans', system-ui, sans-serif",
+    "font_family_mono": "'JetBrains Mono', 'Source Code Pro', monospace",
+    "scale": {
+      "h1": "text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-[#1A1D20]",
+      "h2": "text-2xl sm:text-3xl font-bold tracking-tight text-[#1A1D20]",
+      "h3": "text-lg sm:text-xl font-semibold text-[#1A1D20]",
+      "h4": "text-base font-semibold text-[#1A1D20]",
+      "body": "text-sm sm:text-base font-normal text-[#5C626A]",
+      "caption": "text-xs font-medium uppercase tracking-wider text-[#717882]"
+    }
+  },
+  "responsive": {
+    "breakpoint": "mobile-first",
+    "layout": "Single column stack on mobile (<768px) with bottom or top quick action floating bar; 12-column bento grid on desktop (>=1024px).",
+    "typography": "Fluid rem-based scaling. Inputs minimum 16px to prevent mobile browser auto-zoom.",
+    "overflow_guard": "Ensure max-w-full and overflow-x-hidden on root containers to prevent horizontal scrolling.",
+    "tap_targets": "Minimum 44px x 44px interactive tap targets for all mobile controls and buttons."
+  },
+  "spacing_and_layout": {
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8",
+    "card_padding": "p-5 sm:p-6 md:p-8",
+    "grid_gap": "gap-4 sm:gap-6 lg:gap-8",
+    "border_radius": "rounded-2xl for cards and containers, rounded-xl for inputs and buttons"
+  },
+  "components_and_features": {
+    "header_navigation": {
+      "style": "Sticky top bar with backdrop-blur-md bg-[#FAF8F5]/90 border-b border-[#E2DDD3] z-40",
+      "elements": [
+        "Brand Logo: GastoControl with wallet & receipt icon",
+        "Sync Pill: 'Sincronizado en tiempo real' with pulsing green badge",
+        "Quick CTA: '+ Añadir Gasto' & 'Escanear Ticket AI'",
+        "Navigation Tabs: Dashboard, Gastos, Tickets AI, Presupuesto, Galería"
+      ]
+    },
+    "kpi_summary_grid": {
+      "style": "4-column grid (1 col mobile, 2 col tablet, 4 col desktop)",
+      "cards": [
+        "Presupuesto Total (e.g. 85.000 €)",
+        "Gasto Acumulado (e.g. 34.250 € - progress bar)",
+        "Disponible / Restante (e.g. 50.750 €)",
+        "Nº de Tickets Procesados (e.g. 48 tickets)"
+      ]
+    },
+    "ai_receipt_scanner": {
+      "style": "Drag and drop zone with camera capture trigger on mobile. Visual scanning laser animation during AI analysis.",
+      "extracted_fields": ["Proveedor / Comercio", "Fecha del Ticket", "Importe Total (€)", "Categoría Automática", "Desglose de Artículos (Línea por línea)"],
+      "manual_override": "Full inline edit capability before saving to database"
+    },
+    "category_system": [
+      {"name": "General", "icon": "Package", "color": "bg-indigo-500/10 text-indigo-700 border-indigo-200"},
+      {"name": "Compras", "icon": "ShoppingCart", "color": "bg-orange-500/10 text-orange-700 border-orange-200"},
+      {"name": "Facturas", "icon": "FileText", "color": "bg-blue-500/10 text-blue-700 border-blue-200"},
+      {"name": "Otros", "icon": "MoreHorizontal", "color": "bg-stone-500/10 text-stone-700 border-stone-200"}
+    ],
+    "receipt_gallery_and_export": {
+      "gallery": "Grid of ticket thumbnails with quick preview modal, full image zoom, and download link.",
+      "export_csv": "Instant CSV export button with category breakdown, date, supplier, amount, and notes."
+    }
+  },
+  "image_urls": [],
+  "instructions_to_main_agent": [
+    "Ensure the entire application is in Spanish ('Gasto', 'Ticket', 'Presupuesto', 'General', 'Compras', 'Facturas', 'Exportar CSV').",
+    "Implement real working client-side or backend AI OCR receipt data extraction simulation with instant visual feedback, high confidence scores, and line-item breakdown.",
+    "Add test attributes `data-testid` to all interactive buttons, inputs, modals, filters, and cards.",
+    "Use Lucide icons for categories and actions.",
+    "Use Sonner (`toast`) for feedback when adding expenses, uploading receipts, or exporting CSV.",
+    "Make the UI mobile-first responsive so it looks and works seamlessly on smartphones as well as desktop computers."
+  ]
+}

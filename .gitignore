@@ -1,0 +1,21 @@
+# Dependencias
+node_modules/
+
+# Builds
+dist/
+build/
+
+# Entornos y secretos (¡no subirlos nunca!)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Sistemas / otros
+.DS_Store
+*.log

@@ -1,0 +1,399 @@
+import { supabase } from "./supabase";
+import { DEFAULT_CATEGORIES } from "./constants";
+import { fileToDataUrl, downloadCsv } from "./localBackend";
+
+function uid() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function round2(n) {
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
+
+function fail(status, detail) {
+  const err = new Error(detail || "Error");
+  err.response = { status, data: { detail } };
+  return err;
+}
+
+const sortOtrosLast = (a, b) => {
+  if (a.name === "Otros") return 1;
+  if (b.name === "Otros") return -1;
+  return a.name.localeCompare(b.name);
+};
+
+function matchExpenseId(url) {
+  const m = url.match(/^\/expenses\/([^/]+)$/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function matchCategoryName(url) {
+  const m = url.match(/^\/categories\/([^/]+)$/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+async function requireUser() {
+  if (!supabase) throw fail(401, "Supabase no configurado");
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) throw fail(401, "No autenticado");
+  return data.user;
+}
+
+function cleanExpense(e) {
+  const { user_id, ...rest } = e || {};
+  return { ...rest, amount: Number(e.amount || 0) };
+}
+
+async function getCategories(user) {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("name,icon,color")
+    .eq("user_id", user.id)
+    .order("name");
+  if (error) throw fail(500, error.message);
+  if (data && data.length > 0) return data;
+  const rows = DEFAULT_CATEGORIES.map((c) => ({ user_id: user.id, ...c }));
+  const { error: seedErr } = await supabase.from("categories").insert(rows);
+  if (seedErr) throw fail(500, seedErr.message);
+  return DEFAULT_CATEGORIES;
+}
+
+async function listExpenses(user) {
+  const { data, error } = await supabase
+    .from("expenses")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("date", { ascending: false })
+    .limit(2000);
+  if (error) throw fail(500, error.message);
+  return (data || []).map(cleanExpense);
+}
+
+function dataUrlToBlob(dataUrl) {
+  const parts = dataUrl.split(",");
+  const head = parts[0];
+  const mime = (head.match(/^data:(.*?);base64$/) || [])[1] || "image/jpeg";
+  const bin = atob(parts.slice(1).join(","));
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  const ext = (mime.split("/")[1] || "jpg").replace("jpeg", "jpg");
+  return { blob: new Blob([arr], { type: mime }), ext };
+}
+
+export async function uploadReceiptToStorage(userId, dataUrl) {
+  try {
+    const { blob, ext } = dataUrlToBlob(dataUrl);
+    const path = `${userId}/${uid()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("receipts")
+      .upload(path, blob, { upsert: false, contentType: blob.type });
+    if (error) throw error;
+    const { data } = supabase.storage.from("receipts").getPublicUrl(path);
+    return data.publicUrl;
+  } catch {
+    return dataUrl;
+  }
+}
+
+async function postCategory(user, body) {
+  const cats = await getCategories(user);
+  const name = String((body && body.name) || "").trim();
+  if (!name) throw fail(400, "El nombre no puede estar vacío");
+  if (name.length > 40) throw fail(400, "Nombre demasiado largo (máx 40)");
+  if (cats.some((c) => c.name === name)) {
+    throw fail(409, "Ya existe una categoría con ese nombre");
+  }
+  const doc = {
+    name,
+    icon: (body && body.icon) || "MoreHorizontal",
+    color: (body && body.color) || "stone",
+  };
+  const { error } = await supabase
+    .from("categories")
+    .insert({ user_id: user.id, ...doc });
+  if (error) throw fail(500, error.message);
+  return doc;
+}
+
+async function deleteCategory(user, catName) {
+  if (catName === "Otros") throw fail(400, "La categoría 'Otros' no se puede borrar");
+  const cats = await getCategories(user);
+  if (!cats.some((c) => c.name === catName)) {
+    throw fail(404, "Categoría no encontrada");
+  }
+  const expenses = await listExpenses(user);
+  const used = expenses.filter((e) => e.category === catName).length;
+  if (used > 0) {
+    throw fail(400, `No se puede borrar: hay ${used} gasto(s) en esta categoría`);
+  }
+  const { error } = await supabase
+    .from("categories")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("name", catName);
+  if (error) throw fail(500, error.message);
+  return { ok: true };
+}
+
+async function insertExpense(user, body) {
+  const cats = await getCategories(user);
+  const category = cats.some((c) => c.name === (body && body.category))
+    ? body.category
+    : "Otros";
+
+  let receipt_path = (body && body.receipt_path) || null;
+  let receipt_url = (body && body.receipt_url) || null;
+  if (receipt_path && receipt_path.startsWith("data:")) {
+    const publicUrl = await uploadReceiptToStorage(user.id, receipt_path);
+    receipt_path = publicUrl;
+    receipt_url = publicUrl;
+  }
+
+  const row = {
+    id: uid(),
+    user_id: user.id,
+    vendor: (body && body.vendor) || "",
+    date: (body && body.date) || today(),
+    amount: Number((body && body.amount) || 0),
+    category: category || "Otros",
+    notes: (body && body.notes) || "",
+    items: (body && body.items) || [],
+    receipt_path,
+    receipt_url,
+  };
+  const { error } = await supabase.from("expenses").insert(row);
+  if (error) throw fail(500, error.message);
+  return {
+    id: row.id,
+    vendor: row.vendor,
+    date: row.date,
+    amount: row.amount,
+    category: row.category,
+    notes: row.notes,
+    items: row.items,
+    receipt_path,
+    receipt_url,
+    created_at: new Date().toISOString(),
+  };
+}
+
+async function patchExpense(user, id, body) {
+  const cats = await getCategories(user);
+  const updates = {};
+  ["vendor", "date", "amount", "category", "notes", "items"].forEach((k) => {
+    if (body && body[k] !== undefined) updates[k] = body[k];
+  });
+  if (updates.category !== undefined) {
+    updates.category = cats.some((c) => c.name === updates.category)
+      ? updates.category
+      : "Otros";
+  }
+  const { data, error } = await supabase
+    .from("expenses")
+    .update(updates)
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select("*")
+    .maybeSingle();
+  if (error) throw fail(500, error.message);
+  if (!data) throw fail(404, "Not found");
+  return cleanExpense(data);
+}
+
+async function getBudget(user) {
+  const { data, error } = await supabase
+    .from("budget")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (error) throw fail(500, error.message);
+  if (!data) return { total: 0, alert_at: 80, updated_at: null };
+  const alertRaw = Number(data.alert_at);
+  return {
+    total: Number(data.total || 0),
+    alert_at: alertRaw > 0 ? alertRaw : 80,
+    updated_at: data.updated_at,
+  };
+}
+
+async function putBudget(user, body) {
+  const total = Number((body && body.total) || 0);
+  const alertRaw = Number((body && body.alert_at) || 0);
+  const doc = {
+    user_id: user.id,
+    total,
+    alert_at: alertRaw > 0 ? alertRaw : 80,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from("budget").upsert(doc, { onConflict: "user_id" });
+  if (error) throw fail(500, error.message);
+  return { total, alert_at: doc.alert_at, updated_at: doc.updated_at };
+}
+
+async function stats(user) {
+  const list = await listExpenses(user);
+  const cats = await getCategories(user);
+  const budget = await getBudget(user);
+
+  const total = list.reduce((s, e) => s + Number(e.amount || 0), 0);
+
+  const byCat = {};
+  cats.forEach((c) => {
+    byCat[c.name] = 0;
+  });
+  list.forEach((e) => {
+    const cat = Object.prototype.hasOwnProperty.call(byCat, e.category)
+      ? e.category
+      : "Otros";
+    byCat[cat] = (byCat[cat] || 0) + Number(e.amount || 0);
+  });
+  const order = [...cats].sort(sortOtrosLast).map((c) => c.name);
+  const by_category = order.map((name) => ({
+    category: name,
+    total: round2(byCat[name] || 0),
+  }));
+
+  const monthly = {};
+  list.forEach((e) => {
+    const d = e.date || "";
+    if (d.length >= 7) {
+      const m = d.slice(0, 7);
+      monthly[m] = (monthly[m] || 0) + Number(e.amount || 0);
+    }
+  });
+  const monthlyList = Object.keys(monthly)
+    .sort()
+    .map((m) => ({ month: m, total: round2(monthly[m]) }));
+
+  const budgetTotal = budget.total;
+  const progress = budgetTotal > 0 ? (total / budgetTotal) * 100 : 0;
+
+  return {
+    total_spent: round2(total),
+    count: list.length,
+    budget: budgetTotal,
+    remaining: round2(budgetTotal - total),
+    progress: round2(progress),
+    alert_at: budget.alert_at,
+    by_category,
+    monthly: monthlyList,
+  };
+}
+
+async function scan(user, body) {
+  const file = body && typeof body.get === "function" ? body.get("file") : null;
+  const dataUrl = file ? await fileToDataUrl(file) : null;
+  if (!dataUrl) throw fail(400, "Empty file");
+  return {
+    receipt_path: dataUrl,
+    receipt_url: dataUrl,
+    extracted: {
+      vendor: "",
+      date: today(),
+      amount: 0,
+      category: "General",
+      items: [],
+      notes: "",
+    },
+  };
+}
+
+async function dispatch(method, url, body, config) {
+  const user = await requireUser();
+  const params = (config && config.params) || {};
+
+  if (url === "/categories") {
+    if (method === "get") {
+      const cats = await getCategories(user);
+      return { categories: [...cats].sort(sortOtrosLast) };
+    }
+    if (method === "post") return postCategory(user, body);
+  }
+
+  const catName = matchCategoryName(url);
+  if (catName != null && method === "delete") {
+    return deleteCategory(user, catName);
+  }
+
+  if (url === "/expenses") {
+    if (method === "get") {
+      let list = await listExpenses(user);
+      const { q, category, start, end } = params;
+      if (category && category !== "all") {
+        list = list.filter((e) => e.category === category);
+      }
+      if (q) {
+        const re = new RegExp(String(q), "i");
+        list = list.filter(
+          (e) => re.test(e.vendor || "") || re.test(e.notes || "")
+        );
+      }
+      if (start || end) {
+        list = list.filter((e) => {
+          const d = e.date || "";
+          if (start && d < start) return false;
+          if (end && d > end) return false;
+          return true;
+        });
+      }
+      return list;
+    }
+    if (method === "post") return insertExpense(user, body);
+  }
+
+  const expId = matchExpenseId(url);
+  if (expId != null) {
+    if (method === "get") {
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("id", expId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) throw fail(500, error.message);
+      if (!data) throw fail(404, "Not found");
+      return cleanExpense(data);
+    }
+    if (method === "patch") return patchExpense(user, expId, body);
+    if (method === "delete") {
+      const { error } = await supabase
+        .from("expenses")
+        .delete()
+        .eq("id", expId)
+        .eq("user_id", user.id);
+      if (error) throw fail(500, error.message);
+      return { ok: true };
+    }
+  }
+
+  if (url === "/stats") return stats(user);
+  if (url === "/budget") {
+    if (method === "get") return getBudget(user);
+    if (method === "put") return putBudget(user, body);
+  }
+  if (url === "/receipts/scan" && method === "post") return scan(user, body);
+
+  throw fail(404, "Not found");
+}
+
+export function createSupabaseApi() {
+  return {
+    get: (url, config) => dispatch("get", url, null, config).then((data) => ({ data })),
+    post: (url, data, config) => dispatch("post", url, data, config).then((data) => ({ data })),
+    patch: (url, data, config) => dispatch("patch", url, data, config).then((data) => ({ data })),
+    put: (url, data, config) => dispatch("put", url, data, config).then((data) => ({ data })),
+    delete: (url, config) => dispatch("delete", url, null, config).then((data) => ({ data })),
+  };
+}
+
+export async function supabaseExportCsv() {
+  const user = await requireUser();
+  return downloadCsv(await listExpenses(user));
+}

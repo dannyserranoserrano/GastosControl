@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --oc-bg: #FAF8F5;
+  --oc-surface: #FFFFFF;
+  --oc-muted: #F2EFE9;
+  --oc-border: #E2DDD3;
+  --oc-text: #1A1D20;
+  --oc-text-2: #5C626A;
+  --oc-terra: #D95D39;
+  --oc-terra-hover: #C24C2A;
+  --oc-slate: #1E293B;
+  --oc-amber: #D97706;
+  --oc-emerald: #16A34A;
+}
+
+body {
+  margin: 0;
+  background: var(--oc-bg);
+  color: var(--oc-text);
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 12% 20%, rgba(217, 93, 57, 0.06) 0%, transparent 45%),
+    radial-gradient(circle at 88% 90%, rgba(30, 41, 59, 0.05) 0%, transparent 40%);
+}
+
+.font-heading {
+  font-family: 'Outfit', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+
+/* Blueprint grid subtle pattern */
+.bp-grid {
+  background-image:
+    linear-gradient(rgba(30, 41, 59, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 41, 59, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Scanner laser animation */
+@keyframes scanlaser {
+  0% { transform: translateY(0%); opacity: 0.9; }
+  50% { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0.9; }
+}
+.laser-line {
+  animation: scanlaser 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in { animation: fade-in-up 0.35s ease-out both; }
+
+@layer base {
+  :root {
+    --background: 40 33% 97%;
+    --foreground: 220 11% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 11% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 11% 12%;
+    --primary: 14 68% 54%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 20% 93%;
+    --secondary-foreground: 220 11% 12%;
+    --muted: 40 20% 93%;
+    --muted-foreground: 220 6% 40%;
+    --accent: 40 20% 93%;
+    --accent-foreground: 220 11% 12%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 36 20% 86%;
+    --input: 36 20% 86%;
+    --ring: 14 68% 54%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply text-foreground; background-color: var(--oc-bg); }
+}
+
+/* Custom selection */
+::selection { background: rgba(217, 93, 57, 0.25); color: #1A1D20; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #dcd6cb; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #c2bbaf; }
