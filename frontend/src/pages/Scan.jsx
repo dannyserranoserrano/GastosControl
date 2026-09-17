@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { api, toBackendUrl, USE_REMOTE, budgetCrossing, scanReceipt } from "../lib/api";
 import { useProjects } from "../lib/projectsContext";
+import { loadClosed } from "../lib/closedMonths";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import ExpenseForm from "../components/ExpenseForm";
@@ -51,6 +52,10 @@ export default function Scan() {
   };
 
   const save = async (payload) => {
+    if (loadClosed(activeProject).includes(String(payload.date || "").slice(0, 7))) {
+      toast.error("El mes está cerrado. Reábrelo en el Informe para guardar.");
+      return;
+    }
     try {
       const params = activeProject ? { project: activeProject } : {};
       const beforeStats = (await api.get("/stats", { params })).data || {};

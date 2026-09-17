@@ -62,6 +62,8 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Varios tickets/imágenes por gasto (adjuntar, ver y descargar varias fotos del mismo gasto)
 - [x] Ficha de proyecto ampliada: nombre, descripción, color e icono (editables)
 - [x] Gráficos avanzados en el Panel: evolución por categoría (barras apiladas) y comparativa mes a mes
+- [x] Cierre de mes: bloquear/reabrir un mes (por proyecto); no se pueden añadir/editar/eliminar gastos de un mes cerrado
+- [x] Recordatorio de cierre de mes: aviso (banner + notificación) cuando el mes está por terminar o el anterior sigue abierto
 - [x] Notificaciones proactivas (browser notifications + panel de configuración, avisos de presupuesto y proyección)
 - [x] PWA: instalable, offline (shell precacheado) y manifest con iconos
 - [x] Galería dedicada de tickets

@@ -26,7 +26,7 @@ function downloadTemplate() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export default function CsvImportDialog({ existing = [], onDone, defaultProject = "" }) {
+export default function CsvImportDialog({ existing = [], onDone, defaultProject = "", closedMonths = [] }) {
   const { categories } = useCategories();
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState("");
@@ -67,7 +67,12 @@ export default function CsvImportDialog({ existing = [], onDone, defaultProject 
         if (r.data.category && !catNames.has(r.data.category)) {
           warnings.push(`categoría «${r.data.category}» no existe (se usará Otros)`);
         }
-        return { ...r, warnings, duplicate: dupExisting || dupInFile, dupInFile };
+        const errors = [...r.errors];
+        const ym = String(r.data.date || "").slice(0, 7);
+        if (errors.length === 0 && (closedMonths || []).includes(ym)) {
+          errors.push(`mes ${ym} cerrado (reábrelo para importar)`);
+        }
+        return { ...r, errors, warnings, duplicate: dupExisting || dupInFile, dupInFile };
       });
 
       setFileName(file.name);

@@ -6,7 +6,9 @@ import { Button } from "../components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Progress } from "../components/ui/progress";
 import CategoryBadge from "../components/CategoryBadge";
-import { Download, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Receipt, BarChart3, Printer } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Receipt, BarChart3, Printer, Lock, Unlock } from "lucide-react";
+import { loadClosed, toggleMonth } from "../lib/closedMonths";
+import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 const MONTHS = [
@@ -50,6 +52,20 @@ export default function MonthlyReport() {
   const [projectBudgets, setProjectBudgets] = useState({});
   const [loading, setLoading] = useState(false);
   const [monthSelectorOpen, setMonthSelectorOpen] = useState(false);
+  const [closed, setClosed] = useState(() => loadClosed(activeProject));
+
+  useEffect(() => {
+    setClosed(loadClosed(activeProject));
+  }, [activeProject]);
+
+  const monthClosed = closed.includes(selectedMonth);
+
+  const onToggleClose = () => {
+    const next = toggleMonth(activeProject, selectedMonth);
+    setClosed(next);
+    const nowClosed = next.includes(selectedMonth);
+    toast.success(nowClosed ? "Mes cerrado: no se podrá modificar" : "Mes reabierto");
+  };
 
   const load = async () => {
     setLoading(true);
@@ -214,6 +230,11 @@ export default function MonthlyReport() {
           <h1 className="font-heading text-3xl sm:text-4xl font-extrabold text-[#1A1D20] mt-1">
             {getMonthName(selectedMonth)}
           </h1>
+          {monthClosed && (
+            <span className="inline-flex items-center gap-1 mt-1 text-xs text-[#D95D39]">
+              <Lock className="w-3.5 h-3.5" /> Mes cerrado (no editable)
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 no-print">
           <Button variant="outline" size="sm" className="rounded-xl border-[#E2DDD3]" onClick={() => setSelectedMonth(prevMonth(selectedMonth))}>
@@ -251,6 +272,16 @@ export default function MonthlyReport() {
             onClick={exportPdf}
           >
             <Printer className="w-4 h-4 mr-2" /> PDF
+          </Button>
+          <Button
+            data-testid="btn-toggle-month-lock"
+            variant="outline"
+            className={`rounded-xl border-[#E2DDD3] ${monthClosed ? "text-[#D95D39]" : ""}`}
+            onClick={onToggleClose}
+            title={monthClosed ? "Reabrir mes" : "Cerrar mes (bloquear cambios)"}
+          >
+            {monthClosed ? <Unlock className="w-4 h-4 mr-2" /> : <Lock className="w-4 h-4 mr-2" />}
+            {monthClosed ? "Reabrir mes" : "Cerrar mes"}
           </Button>
         </div>
       </div>

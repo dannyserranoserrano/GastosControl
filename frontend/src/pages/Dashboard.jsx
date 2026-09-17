@@ -5,6 +5,7 @@ import { useNotifications, NotificationSettings } from "../lib/useNotifications.
 import { useRecurring } from "../lib/useRecurring";
 import { useProjects } from "../lib/projectsContext";
 import RecurringForecast from "../components/RecurringForecast";
+import MonthCloseReminder from "../components/MonthCloseReminder";
 import { useCategories } from "../lib/categoriesContext";
 import { COLOR_MAP } from "../lib/api";
 import { Card } from "../components/ui/card";
@@ -118,6 +119,8 @@ export default function Dashboard() {
           </Link>
         </div>
       </div>
+
+      <MonthCloseReminder />
 
       {stats.budget > 0 && (overBudget || warnBudget) && (
         <div

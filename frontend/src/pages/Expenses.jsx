@@ -16,8 +16,9 @@ import CsvImportDialog from "../components/CsvImportDialog";
 import RecurringManager from "../components/RecurringManager";
 import { useRecurring } from "../lib/useRecurring";
 import { useProjects } from "../lib/projectsContext";
+import { loadClosed } from "../lib/closedMonths";
 import { toast } from "sonner";
-import { Plus, Download, Search, Trash2, Pencil, ImageIcon, Copy, Calendar, X } from "lucide-react";
+import { Plus, Download, Search, Trash2, Pencil, ImageIcon, Copy, Calendar, X, Lock } from "lucide-react";
 
 const pad = (n) => String(n).padStart(2, "0");
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -55,6 +56,8 @@ export default function Expenses() {
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
 
   const duplicates = useMemo(() => findDuplicates(allExpenses), [allExpenses]);
+  const closedMonths = loadClosed(activeProject);
+  const isLocked = (date) => closedMonths.includes(String(date || "").slice(0, 7));
 
   const load = async () => {
     setLoading(true);
@@ -92,6 +95,10 @@ export default function Expenses() {
   useRecurring(load);
 
   const create = async (payload) => {
+    if (isLocked(payload.date)) {
+      toast.error("El mes está cerrado. Reábrelo en el Informe para añadir gastos.");
+      return;
+    }
     try {
       const params = activeProject ? { project: activeProject } : {};
       const beforeStats = (await api.get("/stats", { params })).data || {};
@@ -115,6 +122,10 @@ export default function Expenses() {
   };
 
   const update = async (payload) => {
+    if (isLocked(editItem?.date) || isLocked(payload.date)) {
+      toast.error("El mes está cerrado. Reábrelo en el Informe para editarlo.");
+      return;
+    }
     try {
       const params = activeProject ? { project: activeProject } : {};
       const beforeStats = (await api.get("/stats", { params })).data || {};
@@ -138,6 +149,11 @@ export default function Expenses() {
   };
 
   const remove = async (id) => {
+    const target = items.find((e) => e.id === id) || allExpenses.find((e) => e.id === id);
+    if (target && isLocked(target.date)) {
+      toast.error("El mes está cerrado. Reábrelo en el Informe para eliminar.");
+      return;
+    }
     try {
       await api.delete(`/expenses/${id}`);
       toast.success("Gasto eliminado");
@@ -157,7 +173,7 @@ export default function Expenses() {
         <div className="flex gap-2">
           <AutoRulesManager />
           <RecurringManager onChanged={load} />
-          <CsvImportDialog existing={allExpenses} onDone={load} defaultProject={activeProject} />
+          <CsvImportDialog existing={allExpenses} onDone={load} defaultProject={activeProject} closedMonths={closedMonths} />
           <Button
             data-testid="btn-export"
             variant="outline"
@@ -433,6 +449,11 @@ export default function Expenses() {
                         ~{dupes[0].score}%
                       </span>
                     )}
+                    {isLocked(e.date) && (
+                      <span className="text-xs rounded-full bg-[#1E293B]/10 text-[#1E293B] px-2 py-0.5 inline-flex items-center gap-1" title="Mes cerrado">
+                        <Lock className="w-3 h-3" /> cerrado
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-[#5C626A] mt-1 font-mono flex gap-3 flex-wrap">
                     <span>{e.date}</span>
@@ -451,7 +472,9 @@ export default function Expenses() {
                     size="icon"
                     data-testid={`btn-edit-${e.id}`}
                     onClick={() => setEditItem(e)}
-                    className="rounded-lg"
+                    disabled={isLocked(e.date)}
+                    className="rounded-lg disabled:opacity-40"
+                    title={isLocked(e.date) ? "Mes cerrado" : "Editar"}
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
@@ -461,7 +484,9 @@ export default function Expenses() {
                         variant="ghost"
                         size="icon"
                         data-testid={`btn-delete-${e.id}`}
-                        className="rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50"
+                        disabled={isLocked(e.date)}
+                        className="rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-40"
+                        title={isLocked(e.date) ? "Mes cerrado" : "Eliminar"}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
