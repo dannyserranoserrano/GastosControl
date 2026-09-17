@@ -104,6 +104,15 @@ GastosApp/
         ├── lib/
         │   ├── api.js           (api local/remoto, exportCsv, toBackendUrl, helpers re-export)
         │   ├── constants.js     (COLOR_MAP, ALLOWED_ICONS/COLORS, DEFAULT_CATEGORIES, eur)
+        │   ├── findDuplicates.js (detección de gastos duplicados por importe/fecha/proveedor)
+        │   ├── autoRules.js     (sugerencia de categoría/proyecto por historial y reglas)
+        │   ├── csv.js           (parseo/validación de CSV para importación)
+        │   ├── recurring.js     (plantillas y cálculo de gastos recurrentes pendientes)
+        │   ├── period.js        (rangos de periodo del presupuesto: semanal/mensual/anual)
+        │   ├── projectsContext.jsx (proyectos y proyecto activo)
+        │   ├── theme.js         (modo claro/oscuro: almacenamiento y aplicación)
+        │   ├── useRecurring.js  (genera gastos recurrentes pendientes al montar)
+        │   ├── useNotifications.jsx (hook + modal de notificaciones proactivas)
         │   ├── localBackend.js  (implementación local de las rutas sobre IndexedDB)
         │   ├── storage.js       (wrapper de IndexedDB)
         │   ├── supabase.js      (cliente Supabase / isConfigured)
@@ -117,6 +126,11 @@ GastosApp/
         │   ├── ExpenseForm.jsx
         │   ├── CategoryManager.jsx
         │   ├── CategoryBadge.jsx
+        │   ├── AutoRulesManager.jsx
+        │   ├── CsvImportDialog.jsx
+        │   ├── RecurringManager.jsx
+        │   ├── ThemeToggle.jsx
+        │   ├── ProjectSwitcher.jsx
         │   └── ui/              (button, card, input, label, textarea, progress, select, dialog, alert-dialog)
         └── pages/
             ├── Dashboard.jsx    (/)
@@ -124,6 +138,7 @@ GastosApp/
             ├── Scan.jsx         (/escanear)
             ├── Budget.jsx       (/presupuesto)
             ├── Gallery.jsx       (/galeria)
+            ├── MonthlyReport.jsx (/informe)
             └── Login.jsx        (/login)
 ```
 
@@ -136,7 +151,7 @@ La app expone un objeto `api` con la misma interfaz que axios (`get/post/patch/p
 
 Rutas soportadas (ambos modos): `GET/POST /categories`, `DELETE /categories/{name}`,
 `GET/POST /expenses`, `GET/PATCH/DELETE /expenses/{id}`, `GET /stats`, `GET/PUT /budget`,
-`POST /receipts/scan` (solo remoto con OCR; local adjunta imagen), `GET /expenses/export` (CSV).
+`POST /projects/rename`, `POST /receipts/scan` (solo remoto con OCR; local adjunta imagen), `GET /expenses/export` (CSV).
 
 ### Variables de entorno (frontend/.env)
 - `VITE_BACKEND_URL` — vacío = modo local. Con URL = usa el backend (API + OCR).
@@ -188,13 +203,27 @@ uvicorn server:app --reload
 - Persistencia por usuario en Supabase (Postgres + Storage) y **migración opcional de datos locales → cuenta** al iniciar sesión.
 - **Arquitectura "Opción C"**: datos por usuario en Supabase (con sesión) o local (invitado); el escaneo de tickets va siempre al backend FastAPI OCR (`scanReceipt` en `api.js`). MongoDB en el backend es opcional (modo OCR-only sin Mongo desplegable gratis).
 - **Alertas de presupuesto**: umbral configurable (default 80%, campo `alert_at`) y aviso al exceder (banner en Dashboard + toast al cruzar el umbral).
+- **Presupuesto por categoría**: tope por categoría (mapa `category_budgets` en el registro de presupuesto) editable en `/presupuesto`, con barras de progreso y alertas por categoría en el Dashboard.
+- **Proyección de gasto a fin de mes**: en el Dashboard, estimación del gasto mensual según el ritmo diario actual (gasto del mes / días transcurridos × días del mes), con comparativa frente al presupuesto.
+- **Gastos por proyecto/obra**: cada gasto puede asociarse a un proyecto; `/gastos` permite filtrar y muestra resumen/proyección, y `/presupuesto` permite definir topes por proyecto.
+- **Informe mensual** (`/informe`): selector de mes, KPIs (total, tickets, ticket medio), desglose por categoría con gráfico de barras, top proveedores, resumen por proyecto y exportación CSV del mes.
+- **Detección de duplicados**: compara importe, fecha y similitud de proveedor (Levenshtein); badge en cada gasto sospechoso, filtro "ver duplicados" en `/gastos`, y aviso en Dashboard con enlace.
+- **Notificaciones proactivas**: `useNotifications` hook con `NotificationSettings` modal; envía browser notifications al exceder presupuesto, por categoría, o por proyecciones alarmantes; panel de configuración accesible desde Dashboard (icono campana) con toggles por tipo y hora de recordatorio diario opcional.
+- **Filtro por rango de fechas** en `/gastos`: campos desde/hasta (parámetros `start`/`end` de `GET /expenses`), rangos rápidos (este mes, mes pasado, últimos 30 días, este año) y barra con nº de resultados y total.
+- **Auto-categorización** (`autoRules.js` + `AutoRulesManager.jsx`): al crear un gasto, sugiere categoría/proyecto por historial de proveedor (frecuencia + coincidencia parcial) y por reglas explícitas (texto contenido en el proveedor), gestionables desde el botón «Reglas» en `/gastos`; el usuario puede sobrescribir la sugerencia.
+- **Importar CSV** (`csv.js` + `CsvImportDialog.jsx`): botón «Importar CSV» en `/gastos`; detecta delimitador (`;`, `,`, tab), admite cabeceras o posición fija, parsea importes/fechas en formatos ES/EN, previsualiza con validación, marca duplicados (contra existentes y dentro del archivo) y permite omitirlos; incluye descarga de plantilla.
+- **Gastos recurrentes** (`recurring.js` + `useRecurring.js` + `RecurringManager.jsx`): plantillas en `localStorage` (proveedor, importe, categoría, proyecto, día del mes); `useRecurring` genera los gastos pendientes al montar `/` y `/gastos` (una vez por mes, con catch-up), y el gestor permite crear, pausar, eliminar y generar manualmente. Las plantillas son locales al dispositivo; los gastos generados se guardan en el backend activo.
+- **Modo oscuro** (`theme.js` + `ThemeToggle.jsx`): toggle claro/oscuro en el Header con persistencia en `localStorage` (`gastocontrol:theme`), respeta `prefers-color-scheme` cuando no hay preferencia guardada y aplica la clase `.dark` en `<html>` (script inline anti-parpadeo en `index.html`). Los tokens shadcn (`--background`, `--card`, etc.) y los colores hex fijos usados en la app se redefinen bajo `.dark` en `index.css`.
+- **Presupuestos por periodo** (`period.js`): el presupuesto tiene `period` (`weekly`/`monthly`/`yearly`, por defecto mensual) editable en `/presupuesto`. `stats` calcula `period_spent`, `period_by_category`, `period_start/end`, `period_days` y `period_elapsed_days`; `progress`, `remaining` y las alertas/proyecciones (Dashboard, notificaciones) se basan en el periodo en curso.
+- **Proyectos como espacios de trabajo** (`projectsContext.jsx` + `ProjectSwitcher.jsx`): lista de proyectos (localStorage `gastocontrol:projects`) y proyecto activo (`gastocontrol:active_project`), seleccionable desde el Header o desde el filtro de `/gastos`. Cuando hay un proyecto activo, `GET /expenses`, `GET /stats` y `GET/PUT /budget` reciben `project=<nombre>` y devuelven solo sus datos. Cada proyecto guarda su propio presupuesto (total, `alert_at`, `category_budgets`, `period`) en `budget.projects[nombre]` (jsonb en Supabase, `projects` dict en Mongo/local); los gastos nuevos se etiquetan con el proyecto activo. «Todos los proyectos» = sin filtro y presupuesto general.
+- **Categorías por proyecto**: las categorías también son por proyecto. `GET/POST /categories` y `DELETE /categories/{name}` aceptan `project`; al borrar solo se comprueban los gastos de ese proyecto. Local: `gastocontrol:categories` (general) + `gastocontrol:project_categories`; Supabase: columna `project` en `categories` con unique `(user_id, project, name)`; Mongo: campo `project`. `CategoriesProvider` recarga al cambiar de proyecto (por eso `ProjectsProvider` lo envuelve en `App.jsx`).
+- **Renombrar proyectos**: `POST /projects/rename` `{ from, to }` (valida duplicados) reetiqueta los gastos, la clave de `budget.projects`, las categorías del proyecto y las plantillas recurrentes (estas en cliente). Desde `ProjectSwitcher` (botón lápiz) se edita el nombre en línea; `renameProject` del contexto actualiza la lista, el proyecto activo y los recurrentes.
 - **Galería de tickets** (`/galeria`): grid de boletos escaneados con búsqueda, filtro por categoría, vista previa con zoom y descarga.
 - El backend FastAPI (opcional) pasó un smoke test previo (ver `test_reports/iteration_1.json`).
 
 ### Pendiente
-- Presupuesto por categoría; proyección de gasto.
+- (ninguno)
 
 ## 10. Backlog (de `memory/PRD.md`)
 
-- P2: Presupuesto por categoría (no solo global).
-- P2: Proyección de gasto final basada en tendencia.
+- (vacío)

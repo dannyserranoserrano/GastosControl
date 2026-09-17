@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, eur, toBackendUrl } from "../lib/api";
 import { useCategories } from "../lib/categoriesContext";
+import { useProjects } from "../lib/projectsContext";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -53,6 +54,7 @@ async function downloadImage(src, filename) {
 
 export default function Gallery() {
   const { categories } = useCategories();
+  const { activeProject } = useProjects();
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("all");
@@ -66,6 +68,7 @@ export default function Gallery() {
       const params = {};
       if (q) params.q = q;
       if (category && category !== "all") params.category = category;
+      if (activeProject) params.project = activeProject;
       const { data } = await api.get("/expenses", { params });
       setItems(data.filter((e) => e.receipt_path));
     } finally {
@@ -76,7 +79,7 @@ export default function Gallery() {
   useEffect(() => {
     const t = setTimeout(load, 300);
     return () => clearTimeout(t);
-  }, [category, q]);
+  }, [category, q, activeProject]); // eslint-disable-line
 
   const open = (e) => {
     setActive(e);

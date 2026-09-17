@@ -5,6 +5,7 @@ node_modules/
 dist/
 build/
 .vite/
+dev-dist/
 
 # Entornos y secretos (¡no subirlos nunca!)
 .env

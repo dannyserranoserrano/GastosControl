@@ -39,8 +39,24 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Modo local-first (IndexedDB, sin servidor) + backend opcional (FastAPI)
 - [x] Supabase Auth (login Google/Microsoft/GitHub) y persistencia por usuario (Postgres + Storage)
 - [x] Alertas de presupuesto (umbral configurable y aviso al exceder)
+- [x] Presupuesto por categoría (tope por categoría con alertas al exceder)
+- [x] Proyección de gasto a fin de mes (ritmo diario actual sobre el presupuesto)
+- [x] Proyección por categoría (ritmo actual vs tope de cada categoría)
+- [x] Gastos por proyecto/obra (filtro, resumen, proyección y presupuesto por proyecto)
+- [x] Informe mensual exportable (por categoría, top proveedores, por proyecto, CSV)
+- [x] Detección de duplicados (mismo importe + fecha + proveedor similar, badge + aviso Dashboard)
+- [x] Filtro por rango de fechas en `/gastos` (desde/hasta, rangos rápidos y total del resultado)
+- [x] Auto-categorización por proveedor (aprende del historial + reglas explícitas gestionables)
+- [x] Importar gastos desde CSV (parseo flexible, previsualización, validación y omisión de duplicados)
+- [x] Gastos recurrentes (plantillas mensuales que se generan automáticamente, con pausa y generación manual)
+- [x] Modo oscuro (toggle en el header, persistente y con opción de seguir al sistema)
+- [x] Presupuestos por periodo (semanal/mensual/anual): progreso, alertas y proyecciones sobre el periodo activo
+- [x] Proyectos como espacios de trabajo: selector global; cada proyecto tiene sus propios gastos, presupuesto (total, categorías y periodo) y estadísticas
+- [x] Categorías por proyecto: cada proyecto gestiona sus propias categorías; borrar una en un proyecto no afecta a los demás
+- [x] Renombrar proyectos: al cambiar el nombre se actualizan gastos, presupuesto, categorías y plantillas recurrentes
+- [x] Notificaciones proactivas (browser notifications + panel de configuración, avisos de presupuesto y proyección)
+- [x] PWA: instalable, offline (shell precacheado) y manifest con iconos
 - [x] Galería dedicada de tickets
 
 ## Backlog
-- P2: Presupuesto por categoría (no solo global)
-- P2: Proyección de gasto final basada en tendencia
+- (vacío)

@@ -1,11 +1,14 @@
 import { NavLink, Link } from "react-router-dom";
-import { Home, Receipt, ScanLine, Wallet, Compass, LogIn, LogOut, Images } from "lucide-react";
+import { Home, Receipt, ScanLine, Wallet, Compass, LogIn, LogOut, Images, BarChart3 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { Button } from "@/components/ui/button";
+import ThemeToggle from "@/components/ThemeToggle";
+import ProjectSwitcher from "@/components/ProjectSwitcher";
 
 const tabs = [
   { to: "/", label: "Panel", icon: Home, tid: "nav-dashboard" },
   { to: "/gastos", label: "Gastos", icon: Receipt, tid: "nav-expenses" },
+  { to: "/informe", label: "Informe", icon: BarChart3, tid: "nav-report" },
   { to: "/escanear", label: "Escanear", icon: ScanLine, tid: "nav-scan" },
   { to: "/galeria", label: "Tickets", icon: Images, tid: "nav-gallery" },
   { to: "/presupuesto", label: "Presupuesto", icon: Wallet, tid: "nav-budget" },
@@ -49,10 +52,13 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 text-xs px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800">
+          <div className="hidden lg:flex items-center gap-2 text-xs px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Sincronizado
           </div>
+
+          <ProjectSwitcher />
+          <ThemeToggle />
 
           {isConfigured &&
             (loading ? null : user ? (

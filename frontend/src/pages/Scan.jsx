@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { api, toBackendUrl, USE_REMOTE, budgetCrossing, scanReceipt } from "../lib/api";
+import { useProjects } from "../lib/projectsContext";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import ExpenseForm from "../components/ExpenseForm";
@@ -8,6 +9,7 @@ import { Camera, Upload, Sparkles, ScanLine, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Scan() {
+  const { activeProject } = useProjects();
   const [image, setImage] = useState(null);      // File
   const [previewUrl, setPreviewUrl] = useState(null);
   const [scanning, setScanning] = useState(false);
@@ -50,9 +52,10 @@ export default function Scan() {
 
   const save = async (payload) => {
     try {
-      const beforeStats = (await api.get("/stats")).data || {};
-      await api.post("/expenses", { ...payload, receipt_path: receiptPath });
-      const afterStats = (await api.get("/stats")).data || {};
+      const params = activeProject ? { project: activeProject } : {};
+      const beforeStats = (await api.get("/stats", { params })).data || {};
+      await api.post("/expenses", { ...payload, project: payload.project || activeProject || "", receipt_path: receiptPath });
+      const afterStats = (await api.get("/stats", { params })).data || {};
       const cross = budgetCrossing(
         beforeStats.progress,
         afterStats.progress,
@@ -206,6 +209,7 @@ export default function Scan() {
                   date: extracted.date || new Date().toISOString().slice(0, 10),
                   amount: extracted.amount || "",
                   category: extracted.category || "General",
+                  project: activeProject || "",
                   notes: extracted.notes || "",
                 }}
                 onSubmit={save}

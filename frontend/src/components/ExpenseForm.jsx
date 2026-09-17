@@ -1,28 +1,77 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useCategories } from "../lib/categoriesContext";
+import { api } from "../lib/api";
+import { loadRules, suggestFor } from "../lib/autoRules";
+import { Sparkles } from "lucide-react";
 
-export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar", extra }) {
+export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar", extra, defaultProject }) {
 	const { categories } = useCategories();
   const today = new Date().toISOString().slice(0, 10);
+  const editing = !!initial;
   const [form, setForm] = useState({
     vendor: "",
     date: today,
     amount: "",
     category: "General",
+    project: defaultProject || "",
     notes: "",
     ...initial,
   });
+  const [history, setHistory] = useState([]);
+  const rulesRef = useRef(loadRules());
+  const touchedRef = useRef({ category: editing, project: editing });
 
   useEffect(() => {
     if (initial) setForm((f) => ({ ...f, ...initial }));
   }, [initial]);
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  useEffect(() => {
+    if (editing) return;
+    let alive = true;
+    api
+      .get("/expenses")
+      .then((r) => { if (alive) setHistory(r.data || []); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [editing]);
+
+  const suggestion = useMemo(() => {
+    if (editing) return null;
+    return suggestFor(form.vendor, history, rulesRef.current);
+  }, [editing, form.vendor, history]);
+
+  useEffect(() => {
+    if (!suggestion) return;
+    setForm((f) => {
+      let next = f;
+      if (
+        !touchedRef.current.category &&
+        suggestion.category &&
+        categories.some((c) => c.name === suggestion.category) &&
+        f.category !== suggestion.category
+      ) {
+        next = { ...next, category: suggestion.category };
+      }
+      if (
+        !touchedRef.current.project &&
+        suggestion.project &&
+        !String(next.project || "").trim()
+      ) {
+        next = { ...next, project: suggestion.project };
+      }
+      return next;
+    });
+  }, [suggestion, categories]);
+
+  const set = (k, v) => {
+    if (k === "category" || k === "project") touchedRef.current[k] = true;
+    setForm((f) => ({ ...f, [k]: v }));
+  };
 
   const handle = (e) => {
     e.preventDefault();
@@ -83,7 +132,33 @@ export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar"
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>Proyecto / Obra <span className="text-[#8A8F96]">(opcional)</span></Label>
+          <Input
+            data-testid="input-project"
+            value={form.project || ""}
+            onChange={(e) => set("project", e.target.value)}
+            placeholder="Ej. Reforma cocina, Obra centro…"
+            maxLength={80}
+          />
+        </div>
       </div>
+
+      {suggestion && (suggestion.category || suggestion.project) && (
+        <p
+          data-testid="autocat-hint"
+          className="text-xs text-[#5C626A] flex items-start gap-1.5 rounded-xl bg-[#FAF8F5] border border-[#E2DDD3] p-2.5"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-[#D95D39] mt-0.5 shrink-0" />
+          <span>
+            Sugerencia por {suggestion.source}
+            {suggestion.category ? <> · categoría <strong>{suggestion.category}</strong></> : null}
+            {suggestion.project ? <> · proyecto <strong>{suggestion.project}</strong></> : null}
+            {" "}— puedes cambiarla si no encaja.
+          </span>
+        </p>
+      )}
+
       <div className="space-y-1.5">
         <Label>Notas</Label>
         <Textarea

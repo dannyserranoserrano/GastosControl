@@ -1,7 +1,8 @@
 import { useState } from "react";
-import * as Icons from "lucide-react";
 import { api, ALLOWED_ICONS, ALLOWED_COLORS, COLOR_MAP } from "../lib/api";
+import { ICONS, iconFor } from "../lib/icons";
 import { useCategories } from "../lib/categoriesContext";
+import { useProjects } from "../lib/projectsContext";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -12,6 +13,7 @@ import { Trash2, Plus, Tag } from "lucide-react";
 
 export default function CategoryManager() {
   const { categories, reload } = useCategories();
+  const { activeProject } = useProjects();
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("Package");
   const [color, setColor] = useState("cyan");
@@ -22,7 +24,7 @@ export default function CategoryManager() {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await api.post("/categories", { name: name.trim(), icon, color });
+      await api.post("/categories", { name: name.trim(), icon, color, project: activeProject });
       toast.success("Categoría añadida");
       setName("");
       reload();
@@ -36,7 +38,8 @@ export default function CategoryManager() {
 
   const remove = async (n) => {
     try {
-      await api.delete(`/categories/${encodeURIComponent(n)}`);
+      const params = activeProject ? { project: activeProject } : {};
+      await api.delete(`/categories/${encodeURIComponent(n)}`, { params });
       toast.success("Categoría eliminada");
       reload();
     } catch (err) {
@@ -45,20 +48,25 @@ export default function CategoryManager() {
     }
   };
 
-  const PreviewIcon = Icons[icon] || Icons.Package;
+  const PreviewIcon = iconFor(icon);
   const previewCls = (COLOR_MAP[color] || COLOR_MAP.stone).cls;
 
   return (
     <Card className="p-6 rounded-2xl border-[#E2DDD3] bg-white" data-testid="category-manager">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-1">
         <Tag className="w-5 h-5 text-[#D95D39]" />
         <h3 className="font-heading font-bold text-lg">Categorías</h3>
       </div>
+      <p className="text-sm text-[#5C626A] mb-4">
+        {activeProject
+          ? `Categorías del proyecto «${activeProject}». Son independientes del resto de proyectos.`
+          : "Categorías generales (sin proyecto). Cada proyecto tiene las suyas propias."}
+      </p>
 
       {/* Existing */}
       <div className="flex flex-wrap gap-2 mb-6">
         {categories.map((c) => {
-          const Icon = Icons[c.icon] || Icons.MoreHorizontal;
+          const Icon = iconFor(c.icon);
           const cls = (COLOR_MAP[c.color] || COLOR_MAP.stone).cls;
           const canDelete = c.name !== "Otros";
           return (
@@ -138,7 +146,7 @@ export default function CategoryManager() {
           <Label className="mb-2 block">Icono</Label>
           <div className="flex flex-wrap gap-1.5">
             {ALLOWED_ICONS.map((n) => {
-              const Ic = Icons[n];
+              const Ic = ICONS[n];
               const active = icon === n;
               return (
                 <button

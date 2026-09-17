@@ -75,6 +75,7 @@ export async function importLocalToCloud(userId) {
       date: e.date || "",
       amount: Number(e.amount || 0),
       category: e.category || "Otros",
+      project: e.project || "",
       notes: e.notes || "",
       items: e.items || [],
       receipt_path,

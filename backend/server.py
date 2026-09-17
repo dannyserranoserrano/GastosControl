@@ -14,7 +14,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, date
 
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
@@ -40,6 +40,12 @@ else:
 STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
 STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
 EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
+# OCR alternativo: Gemini directo vía endpoint OpenAI-compatible de Google
+# (key gratuita de https://aistudio.google.com). Si GEMINI_API_KEY está definida,
+# se usa Gemini en lugar del proxy de Emergent para el LLM. El storage sigue en Emergent.
+GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
+GEMINI_MODEL = (os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash").strip()
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 APP_NAME = "gastocontrol"
 
 storage_key = None
@@ -117,10 +123,23 @@ ALLOWED_COLORS = [
 ]
 
 
-async def get_category_names():
+async def get_category_names(project: Optional[str] = None):
     if _mongo_client is None:
         return CATEGORIES
-    docs = await db.categories.find({}, {"_id": 0}).to_list(500)
+    proj = (project or "").strip()
+    if proj:
+        query = {"project": proj}
+    else:
+        query = {"$or": [{"project": ""}, {"project": {"$exists": False}}]}
+    docs = await db.categories.find(query, {"_id": 0}).to_list(500)
+    if not docs:
+        if proj:
+            rows = [{**dict(c), "project": proj} for c in DEFAULT_CATEGORIES]
+            try:
+                await db.categories.insert_many(rows)
+            except Exception:
+                pass
+        return CATEGORIES
     return [d["name"] for d in docs] or CATEGORIES
 
 # Models
@@ -131,6 +150,7 @@ class Expense(BaseModel):
     date: str  # ISO date YYYY-MM-DD
     amount: float
     category: str = "Otros"
+    project: str = ""
     notes: str = ""
     items: List[dict] = Field(default_factory=list)
     receipt_path: Optional[str] = None  # storage path
@@ -143,6 +163,7 @@ class ExpenseCreate(BaseModel):
     date: str
     amount: float
     category: str = "Otros"
+    project: str = ""
     notes: str = ""
     items: List[dict] = Field(default_factory=list)
     receipt_path: Optional[str] = None
@@ -154,6 +175,7 @@ class ExpenseUpdate(BaseModel):
     date: Optional[str] = None
     amount: Optional[float] = None
     category: Optional[str] = None
+    project: Optional[str] = None
     notes: Optional[str] = None
     items: Optional[List[dict]] = None
 
@@ -162,11 +184,61 @@ class Budget(BaseModel):
     total: float = 0.0
     alert_at: float = 80.0
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    category_budgets: dict = Field(default_factory=dict)
+    project_budgets: dict = Field(default_factory=dict)
+    period: str = "monthly"
 
 
 class BudgetUpdate(BaseModel):
     total: float
     alert_at: Optional[float] = None
+    category_budgets: Optional[dict] = None
+    project_budgets: Optional[dict] = None
+    period: Optional[str] = None
+
+
+PERIODS = ("weekly", "monthly", "yearly")
+
+
+def period_range(period: Optional[str]):
+    p = period if period in PERIODS else "monthly"
+    today = datetime.now(timezone.utc).date()
+    if p == "weekly":
+        start = today - timedelta(days=today.weekday())
+        end = start + timedelta(days=6)
+        label = "semana"
+    elif p == "yearly":
+        start = today.replace(month=1, day=1)
+        end = today.replace(month=12, day=31)
+        label = "año"
+    else:
+        start = today.replace(day=1)
+        next_month = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        end = next_month - timedelta(days=1)
+        label = "mes"
+    days = (end - start).days + 1
+    elapsed = min(max((today - start).days + 1, 1), days)
+    return {
+        "period": p,
+        "start": start.isoformat(),
+        "end": end.isoformat(),
+        "label": label,
+        "days": days,
+        "elapsed": elapsed,
+    }
+
+
+def sanitize_category_budgets(raw):
+    out = {}
+    if isinstance(raw, dict):
+        for name, value in raw.items():
+            try:
+                v = float(value)
+            except (TypeError, ValueError):
+                continue
+            if v >= 0:
+                out[name] = round(v, 2)
+    return out
 
 
 class Category(BaseModel):
@@ -179,6 +251,13 @@ class CategoryCreate(BaseModel):
     name: str
     icon: Optional[str] = "MoreHorizontal"
     color: Optional[str] = "stone"
+    project: Optional[str] = ""
+
+
+class ProjectRename(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
+    from_name: str = Field(alias="from")
+    to: str
 
 # Startup
 @app.on_event("startup")
@@ -193,7 +272,7 @@ async def startup():
         try:
             count = await db.categories.count_documents({})
             if count == 0:
-                await db.categories.insert_many([dict(c) for c in DEFAULT_CATEGORIES])
+                await db.categories.insert_many([{**dict(c), "project": ""} for c in DEFAULT_CATEGORIES])
                 logger.info("Seeded default categories")
         except Exception as e:
             logger.error(f"Seed categories failed: {e}")
@@ -211,9 +290,21 @@ async def root():
 
 
 @api_router.get("/categories")
-async def get_categories():
-    docs = await db.categories.find({}, {"_id": 0}).to_list(500)
+async def get_categories(project: Optional[str] = None):
+    proj = (project or "").strip()
+    if proj:
+        query = {"project": proj}
+    else:
+        query = {"$or": [{"project": ""}, {"project": {"$exists": False}}]}
+    docs = await db.categories.find(query, {"_id": 0}).to_list(500)
     if not docs:
+        if proj:
+            try:
+                await db.categories.insert_many(
+                    [{**dict(c), "project": proj} for c in DEFAULT_CATEGORIES]
+                )
+            except Exception:
+                pass
         return {"categories": [dict(c) for c in DEFAULT_CATEGORIES]}
     # Return in insertion order but always ensure "Otros" is last if present
     docs_sorted = sorted(docs, key=lambda d: (d["name"] == "Otros", d["name"]))
@@ -223,40 +314,80 @@ async def get_categories():
 @api_router.post("/categories", response_model=Category)
 async def create_category(payload: CategoryCreate):
     name = (payload.name or "").strip()
+    project = (payload.project or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="El nombre no puede estar vacío")
     if len(name) > 40:
         raise HTTPException(status_code=400, detail="Nombre demasiado largo (máx 40)")
-    existing = await db.categories.find_one({"name": name})
+    if project:
+        query = {"name": name, "project": project}
+    else:
+        query = {"name": name, "$or": [{"project": ""}, {"project": {"$exists": False}}]}
+    existing = await db.categories.find_one(query)
     if existing:
         raise HTTPException(status_code=409, detail="Ya existe una categoría con ese nombre")
     icon = payload.icon if payload.icon in ALLOWED_ICONS else "MoreHorizontal"
     color = payload.color if payload.color in ALLOWED_COLORS else "stone"
-    doc = {"name": name, "icon": icon, "color": color}
+    doc = {"name": name, "icon": icon, "color": color, "project": project}
     await db.categories.insert_one(doc)
-    return Category(**doc)
+    return Category(**{"name": name, "icon": icon, "color": color})
 
 
 @api_router.delete("/categories/{name}")
-async def delete_category(name: str):
+async def delete_category(name: str, project: Optional[str] = None):
     if name == "Otros":
         raise HTTPException(status_code=400, detail="La categoría 'Otros' no se puede borrar")
-    used = await db.expenses.count_documents({"category": name})
+    proj = (project or "").strip()
+    expense_q = {"category": name}
+    if proj:
+        expense_q["project"] = proj
+    else:
+        expense_q["$or"] = [{"project": ""}, {"project": {"$exists": False}}]
+    used = await db.expenses.count_documents(expense_q)
     if used > 0:
         raise HTTPException(
             status_code=400,
             detail=f"No se puede borrar: hay {used} gasto(s) en esta categoría",
         )
-    result = await db.categories.delete_one({"name": name})
+    if proj:
+        cat_q = {"name": name, "project": proj}
+    else:
+        cat_q = {"name": name, "$or": [{"project": ""}, {"project": {"$exists": False}}]}
+    result = await db.categories.delete_one(cat_q)
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
     return {"ok": True}
 
 
+# --- Projects ---
+@api_router.post("/projects/rename")
+async def rename_project(payload: ProjectRename):
+    src = (payload.from_name or "").strip()
+    dst = (payload.to or "").strip()[:80]
+    if not src or not dst:
+        raise HTTPException(status_code=400, detail="Nombre inválido")
+    if src == dst:
+        return {"ok": True, "project": dst, "expenses": 0}
+    clash = await db.expenses.count_documents({"project": dst})
+    if clash > 0:
+        raise HTTPException(status_code=409, detail="Ya existe un proyecto con ese nombre")
+    res = await db.expenses.update_many({"project": src}, {"$set": {"project": dst}})
+    doc = await db.budget.find_one({"_id": "singleton"}) or {}
+    projects = dict(doc.get("projects") or {})
+    if src in projects:
+        projects[dst] = projects.pop(src)
+        await db.budget.update_one({"_id": "singleton"}, {"$set": {"projects": projects}})
+    try:
+        await db.categories.update_many({"project": src}, {"$set": {"project": dst}})
+    except Exception:
+        pass
+    return {"ok": True, "project": dst, "expenses": res.modified_count}
+
+
 # --- Expenses CRUD ---
 @api_router.post("/expenses", response_model=Expense)
 async def create_expense(payload: ExpenseCreate):
-    names = await get_category_names()
+    names = await get_category_names(payload.project)
     if payload.category not in names:
         payload.category = "Otros"
     exp = Expense(**payload.model_dump())
@@ -267,6 +398,7 @@ async def create_expense(payload: ExpenseCreate):
 @api_router.get("/expenses", response_model=List[Expense])
 async def list_expenses(
     category: Optional[str] = None,
+    project: Optional[str] = None,
     q: Optional[str] = None,
     start: Optional[str] = None,
     end: Optional[str] = None,
@@ -274,6 +406,8 @@ async def list_expenses(
     query = {}
     if category and category != "all":
         query["category"] = category
+    if project and project != "all":
+        query["project"] = project
     if start or end:
         date_q = {}
         if start:
@@ -295,9 +429,9 @@ async def export_expenses():
     docs = await db.expenses.find({}, {"_id": 0}).sort("date", -1).to_list(5000)
     buf = io.StringIO()
     writer = csv.writer(buf, delimiter=";")
-    writer.writerow(["Fecha", "Proveedor", "Categoría", "Importe (€)", "Notas"])
+    writer.writerow(["Fecha", "Proveedor", "Categoría", "Proyecto / Obra", "Importe (€)", "Notas"])
     for d in docs:
-        writer.writerow([d.get("date", ""), d.get("vendor", ""), d.get("category", ""),
+        writer.writerow([d.get("date", ""), d.get("vendor", ""), d.get("category", ""), d.get("project", ""),
                          f"{float(d.get('amount', 0)):.2f}", d.get("notes", "")])
     csv_bytes = buf.getvalue().encode("utf-8-sig")
     return Response(
@@ -319,7 +453,10 @@ async def get_expense(expense_id: str):
 async def update_expense(expense_id: str, payload: ExpenseUpdate):
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
     if "category" in updates:
-        names = await get_category_names()
+        if "project" not in updates:
+            existing = await db.expenses.find_one({"id": expense_id}, {"project": 1})
+            updates["project"] = (existing or {}).get("project", "")
+        names = await get_category_names(updates.get("project"))
         if updates["category"] not in names:
             updates["category"] = "Otros"
     if updates:
@@ -340,10 +477,14 @@ async def delete_expense(expense_id: str):
 
 # --- Stats ---
 @api_router.get("/stats")
-async def get_stats():
-    docs = await db.expenses.find({}, {"_id": 0}).to_list(5000)
+async def get_stats(project: Optional[str] = None):
+    query = {}
+    project_filter = (project or "").strip()
+    if project_filter and project_filter != "all":
+        query["project"] = project_filter
+    docs = await db.expenses.find(query, {"_id": 0}).to_list(5000)
     total = sum(float(d.get("amount", 0)) for d in docs)
-    names = await get_category_names()
+    names = await get_category_names(project_filter)
     by_cat = {c: 0.0 for c in names}
     for d in docs:
         cat = d.get("category", "Otros")
@@ -360,31 +501,60 @@ async def get_stats():
     monthly_list = [{"month": k, "total": round(v, 2)} for k, v in sorted(monthly.items())]
 
     budget_doc = await db.budget.find_one({"_id": "singleton"})
-    budget_total = float(budget_doc["total"]) if budget_doc else 0.0
-    budget_alert = float(budget_doc.get("alert_at", 80)) if budget_doc else 80.0
+    projects_map = (budget_doc.get("projects") or {}) if budget_doc else {}
+    budget_src = projects_map.get(project_filter, {}) if project_filter else (budget_doc or {})
+    budget_total = float(budget_src.get("total", 0) or 0)
+    budget_alert = float(budget_src.get("alert_at", 80) or 80)
+    budget_cat = budget_src.get("category_budgets") or {}
+    budget_project = (budget_doc.get("project_budgets") or {}) if budget_doc else {}
+    budget_period = budget_src.get("period") or "monthly"
+    rng = period_range(budget_period)
+
+    period_docs = [d for d in docs if rng["start"] <= str(d.get("date", "")) <= rng["end"]]
+    period_total = sum(float(d.get("amount", 0)) for d in period_docs)
+    period_by_cat = {c: 0.0 for c in names}
+    for d in period_docs:
+        cat = d.get("category", "Otros")
+        if cat not in period_by_cat:
+            cat = "Otros"
+        period_by_cat[cat] += float(d.get("amount", 0))
 
     return {
         "total_spent": round(total, 2),
         "count": len(docs),
         "budget": budget_total,
-        "remaining": round(budget_total - total, 2),
-        "progress": round((total / budget_total * 100) if budget_total > 0 else 0, 2),
+        "remaining": round(budget_total - period_total, 2),
+        "progress": round((period_total / budget_total * 100) if budget_total > 0 else 0, 2),
         "alert_at": budget_alert,
+        "category_budgets": budget_cat,
+        "project_budgets": budget_project,
         "by_category": [{"category": k, "total": round(v, 2)} for k, v in by_cat.items()],
+        "period": rng["period"],
+        "period_label": rng["label"],
+        "period_start": rng["start"],
+        "period_end": rng["end"],
+        "period_days": rng["days"],
+        "period_elapsed_days": rng["elapsed"],
+        "period_spent": round(period_total, 2),
+        "period_by_category": [{"category": k, "total": round(v, 2)} for k, v in period_by_cat.items()],
         "monthly": monthly_list,
     }
 
 
 # --- Budget ---
 @api_router.get("/budget")
-async def get_budget():
-    doc = await db.budget.find_one({"_id": "singleton"})
-    if not doc:
-        return {"total": 0.0, "alert_at": 80.0}
+async def get_budget(project: Optional[str] = None):
+    doc = await db.budget.find_one({"_id": "singleton"}) or {}
+    project_filter = (project or "").strip()
+    src = (doc.get("projects") or {}).get(project_filter, {}) if project_filter else doc
     return {
-        "total": float(doc.get("total", 0)),
-        "alert_at": float(doc.get("alert_at", 80)),
-        "updated_at": doc.get("updated_at"),
+        "total": float(src.get("total", 0) or 0),
+        "alert_at": float(src.get("alert_at", 80) or 80),
+        "updated_at": src.get("updated_at") or doc.get("updated_at"),
+        "category_budgets": src.get("category_budgets") or {},
+        "project_budgets": doc.get("project_budgets") or {},
+        "period": src.get("period") or "monthly",
+        "project": project_filter,
     }
 
 
@@ -392,12 +562,29 @@ async def get_budget():
 async def set_budget(payload: BudgetUpdate):
     now = datetime.now(timezone.utc).isoformat()
     alert = float(payload.alert_at) if payload.alert_at and payload.alert_at > 0 else 80.0
-    await db.budget.update_one(
-        {"_id": "singleton"},
-        {"$set": {"total": float(payload.total), "alert_at": alert, "updated_at": now}},
-        upsert=True,
-    )
-    return {"total": float(payload.total), "alert_at": alert, "updated_at": now}
+    cb = sanitize_category_budgets(payload.category_budgets)
+    pb = sanitize_category_budgets(payload.project_budgets)
+    period = payload.period if payload.period in PERIODS else "monthly"
+    project_filter = (payload.project or "").strip()
+    entry = {
+        "total": float(payload.total),
+        "alert_at": alert,
+        "category_budgets": cb,
+        "period": period,
+        "updated_at": now,
+    }
+    doc = await db.budget.find_one({"_id": "singleton"}) or {}
+    set_fields = {"project_budgets": pb, "updated_at": now}
+    if project_filter:
+        projects = dict(doc.get("projects") or {})
+        projects[project_filter] = entry
+        set_fields["projects"] = projects
+    else:
+        set_fields.update(entry)
+    await db.budget.update_one({"_id": "singleton"}, {"$set": set_fields}, upsert=True)
+    if project_filter:
+        return {**entry, "project_budgets": pb, "project": project_filter}
+    return {**entry, "project_budgets": pb}
 
 
 # --- Receipt upload & AI extraction ---
@@ -421,6 +608,48 @@ SYSTEM_PROMPT = (
     "items (array de objetos con description y price), "
     "notes (string breve). Devuelve SOLO el JSON, sin markdown, sin texto extra."
 )
+
+
+def _parse_extraction(text: str, extracted: dict) -> dict:
+    text = str(text or "").strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:].strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1:
+        text = text[start:end + 1]
+    parsed = json.loads(text)
+    for k in extracted.keys():
+        if k in parsed and parsed[k] is not None:
+            extracted[k] = parsed[k]
+    try:
+        extracted["amount"] = float(extracted.get("amount") or 0)
+    except Exception:
+        extracted["amount"] = 0.0
+    return extracted
+
+
+async def _extract_with_gemini(data: bytes, ctype: str, extracted: dict) -> dict:
+    import openai
+    b64 = base64.b64encode(data).decode("utf-8")
+    mime = ctype if ctype.startswith("image/") else "image/jpeg"
+    client = openai.OpenAI(api_key=GEMINI_API_KEY, base_url=GEMINI_BASE_URL)
+    completion = client.chat.completions.create(
+        model=GEMINI_MODEL,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Analiza este ticket y devuelve el JSON solicitado."},
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+                ],
+            },
+        ],
+    )
+    return _parse_extraction(completion.choices[0].message.content, extracted)
 
 
 @api_router.post("/receipts/scan")
@@ -452,7 +681,7 @@ async def scan_receipt(file: UploadFile = File(...)):
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
 
-    # Analyze with Gemini
+    # Analyze with Gemini (directo) o con el proxy de Emergent como fallback
     extracted = {
         "vendor": "",
         "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
@@ -462,39 +691,25 @@ async def scan_receipt(file: UploadFile = File(...)):
         "notes": "",
     }
     try:
-        b64 = base64.b64encode(data).decode("utf-8")
-        chat = LlmChat(
-            api_key=EMERGENT_KEY,
-            session_id=f"receipt-{uuid.uuid4()}",
-            system_message=SYSTEM_PROMPT,
-        ).with_model("gemini", "gemini-3.1-pro-preview")
+        if GEMINI_API_KEY:
+            extracted = await _extract_with_gemini(data, ctype, extracted)
+        elif EMERGENT_KEY:
+            b64 = base64.b64encode(data).decode("utf-8")
+            chat = LlmChat(
+                api_key=EMERGENT_KEY,
+                session_id=f"receipt-{uuid.uuid4()}",
+                system_message=SYSTEM_PROMPT,
+            ).with_model("gemini", "gemini-3.1-pro-preview")
 
-        img = ImageContent(image_base64=b64)
-        msg = UserMessage(
-            text="Analiza este ticket y devuelve el JSON solicitado.",
-            file_contents=[img],
-        )
-        response = await chat.send_message(msg)
-        text = str(response).strip()
-        # strip markdown fences if any
-        if text.startswith("```"):
-            text = text.strip("`")
-            if text.lower().startswith("json"):
-                text = text[4:].strip()
-        # find JSON
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end != -1:
-            text = text[start:end + 1]
-        parsed = json.loads(text)
-        for k in extracted.keys():
-            if k in parsed and parsed[k] is not None:
-                extracted[k] = parsed[k]
-        # normalize
-        try:
-            extracted["amount"] = float(extracted.get("amount") or 0)
-        except Exception:
-            extracted["amount"] = 0.0
+            img = ImageContent(image_base64=b64)
+            msg = UserMessage(
+                text="Analiza este ticket y devuelve el JSON solicitado.",
+                file_contents=[img],
+            )
+            response = await chat.send_message(msg)
+            extracted = _parse_extraction(response, extracted)
+        else:
+            logger.warning("No AI key configured for extraction (GEMINI_API_KEY / EMERGENT_LLM_KEY)")
         if extracted.get("category") not in await get_category_names():
             extracted["category"] = "Otros"
     except Exception as e:

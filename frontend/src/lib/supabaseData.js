@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import { DEFAULT_CATEGORIES } from "./constants";
 import { fileToDataUrl, downloadCsv } from "./localBackend";
+import { normalizePeriod, periodRange } from "./period";
 
 function uid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -21,6 +22,18 @@ function fail(status, detail) {
   const err = new Error(detail || "Error");
   err.response = { status, data: { detail } };
   return err;
+}
+
+// Detecta si un error de PostgREST se debe a una columna inexistente
+// (p. ej. `project`/`project_budgets` cuando no se ha ejecutado el schema actualizado).
+function missingColumn(error, column) {
+  if (!error) return false;
+  const msg = String(error.message || "");
+  return (
+    error.code === "PGRST204" ||
+    error.code === "42703" ||
+    msg.toLowerCase().includes(String(column).toLowerCase())
+  );
 }
 
 const sortOtrosLast = (a, b) => {
@@ -51,17 +64,34 @@ function cleanExpense(e) {
   return { ...rest, amount: Number(e.amount || 0) };
 }
 
-async function getCategories(user) {
-  const { data, error } = await supabase
-    .from("categories")
-    .select("name,icon,color")
-    .eq("user_id", user.id)
-    .order("name");
+async function getCategories(user, project) {
+  const proj = String(project || "").trim();
+  const run = async (withProject) => {
+    let q = supabase
+      .from("categories")
+      .select("name,icon,color")
+      .eq("user_id", user.id);
+    if (withProject && proj) q = q.eq("project", proj);
+    return q.order("name");
+  };
+  let { data, error } = await run(true);
+  if (error && missingColumn(error, "project")) {
+    ({ data, error } = await run(false));
+  }
   if (error) throw fail(500, error.message);
   if (data && data.length > 0) return data;
-  const rows = DEFAULT_CATEGORIES.map((c) => ({ user_id: user.id, ...c }));
-  const { error: seedErr } = await supabase.from("categories").insert(rows);
-  if (seedErr) throw fail(500, seedErr.message);
+
+  const rows = DEFAULT_CATEGORIES.map((c) => ({ user_id: user.id, project: proj, ...c }));
+  let { error: seedErr } = await supabase.from("categories").insert(rows);
+  if (seedErr && missingColumn(seedErr, "project")) {
+    const rows2 = DEFAULT_CATEGORIES.map((c) => ({ user_id: user.id, ...c }));
+    ({ error: seedErr } = await supabase.from("categories").insert(rows2));
+  }
+  if (seedErr) {
+    // P. ej. constraint unique(user_id, name) antiguo: no es fatal, se usan las por defecto.
+    if (seedErr.code === "23505") return DEFAULT_CATEGORIES;
+    throw fail(500, seedErr.message);
+  }
   return DEFAULT_CATEGORIES;
 }
 
@@ -103,7 +133,8 @@ export async function uploadReceiptToStorage(userId, dataUrl) {
 }
 
 async function postCategory(user, body) {
-  const cats = await getCategories(user);
+  const project = String((body && body.project) || "").trim();
+  const cats = await getCategories(user, project);
   const name = String((body && body.name) || "").trim();
   if (!name) throw fail(400, "El nombre no puede estar vacío");
   if (name.length > 40) throw fail(400, "Nombre demasiado largo (máx 40)");
@@ -115,35 +146,92 @@ async function postCategory(user, body) {
     icon: (body && body.icon) || "MoreHorizontal",
     color: (body && body.color) || "stone",
   };
-  const { error } = await supabase
+  let { error } = await supabase
     .from("categories")
-    .insert({ user_id: user.id, ...doc });
+    .insert({ user_id: user.id, project, ...doc });
+  if (error && missingColumn(error, "project")) {
+    ({ error } = await supabase.from("categories").insert({ user_id: user.id, ...doc }));
+  }
   if (error) throw fail(500, error.message);
   return doc;
 }
 
-async function deleteCategory(user, catName) {
+async function deleteCategory(user, catName, project) {
   if (catName === "Otros") throw fail(400, "La categoría 'Otros' no se puede borrar");
-  const cats = await getCategories(user);
+  const proj = String(project || "").trim();
+  const cats = await getCategories(user, proj);
   if (!cats.some((c) => c.name === catName)) {
     throw fail(404, "Categoría no encontrada");
   }
   const expenses = await listExpenses(user);
-  const used = expenses.filter((e) => e.category === catName).length;
+  const used = expenses.filter(
+    (e) => e.category === catName && (e.project || "") === proj
+  ).length;
   if (used > 0) {
     throw fail(400, `No se puede borrar: hay ${used} gasto(s) en esta categoría`);
   }
-  const { error } = await supabase
+  let q = supabase
     .from("categories")
     .delete()
     .eq("user_id", user.id)
     .eq("name", catName);
+  if (proj) q = q.eq("project", proj);
+  let { error } = await q;
+  if (error && missingColumn(error, "project")) {
+    ({ error } = await supabase
+      .from("categories")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("name", catName));
+  }
   if (error) throw fail(500, error.message);
   return { ok: true };
 }
 
+async function renameProject(user, body) {
+  const from = String((body && body.from) || "").trim();
+  const to = String((body && body.to) || "").trim().slice(0, 80);
+  if (!from || !to) throw fail(400, "Nombre inválido");
+  if (from === to) return { ok: true, project: to, expenses: 0 };
+
+  const { data: clash } = await supabase
+    .from("expenses")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("project", to)
+    .limit(1);
+  if (clash && clash.length > 0) throw fail(409, "Ya existe un proyecto con ese nombre");
+
+  const { error: expErr } = await supabase
+    .from("expenses")
+    .update({ project: to })
+    .eq("user_id", user.id)
+    .eq("project", from);
+  if (expErr) throw fail(500, expErr.message);
+
+  const { data: row } = await supabase
+    .from("budget")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (row && row.projects && row.projects[from]) {
+    const projects = { ...row.projects };
+    projects[to] = projects[from];
+    delete projects[from];
+    await upsertBudgetRow({ ...row, projects });
+  }
+
+  await supabase
+    .from("categories")
+    .update({ project: to })
+    .eq("user_id", user.id)
+    .eq("project", from);
+
+  return { ok: true, project: to };
+}
+
 async function insertExpense(user, body) {
-  const cats = await getCategories(user);
+  const cats = await getCategories(user, body && body.project);
   const category = cats.some((c) => c.name === (body && body.category))
     ? body.category
     : "Otros";
@@ -163,12 +251,17 @@ async function insertExpense(user, body) {
     date: (body && body.date) || today(),
     amount: Number((body && body.amount) || 0),
     category: category || "Otros",
+    project: String((body && body.project) || "").trim().slice(0, 80),
     notes: (body && body.notes) || "",
     items: (body && body.items) || [],
     receipt_path,
     receipt_url,
   };
-  const { error } = await supabase.from("expenses").insert(row);
+  let { error } = await supabase.from("expenses").insert(row);
+  if (error && missingColumn(error, "project")) {
+    const { project, ...rest } = row;
+    ({ error } = await supabase.from("expenses").insert(rest));
+  }
   if (error) throw fail(500, error.message);
   return {
     id: row.id,
@@ -176,6 +269,7 @@ async function insertExpense(user, body) {
     date: row.date,
     amount: row.amount,
     category: row.category,
+    project: row.project,
     notes: row.notes,
     items: row.items,
     receipt_path,
@@ -185,62 +279,134 @@ async function insertExpense(user, body) {
 }
 
 async function patchExpense(user, id, body) {
-  const cats = await getCategories(user);
   const updates = {};
-  ["vendor", "date", "amount", "category", "notes", "items"].forEach((k) => {
+  ["vendor", "date", "amount", "category", "project", "notes", "items"].forEach((k) => {
     if (body && body[k] !== undefined) updates[k] = body[k];
   });
+  if (updates.project !== undefined) updates.project = String(updates.project || "").trim().slice(0, 80);
+  const cats = await getCategories(user, updates.project);
   if (updates.category !== undefined) {
     updates.category = cats.some((c) => c.name === updates.category)
       ? updates.category
       : "Otros";
   }
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("expenses")
     .update(updates)
     .eq("id", id)
     .eq("user_id", user.id)
     .select("*")
     .maybeSingle();
+  if (error && missingColumn(error, "project")) {
+    const { project, ...rest } = updates;
+    ({ data, error } = await supabase
+      .from("expenses")
+      .update(rest)
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select("*")
+      .maybeSingle());
+  }
   if (error) throw fail(500, error.message);
   if (!data) throw fail(404, "Not found");
   return cleanExpense(data);
 }
 
-async function getBudget(user) {
+async function getBudget(user, project) {
   const { data, error } = await supabase
     .from("budget")
     .select("*")
     .eq("user_id", user.id)
     .maybeSingle();
   if (error) throw fail(500, error.message);
-  if (!data) return { total: 0, alert_at: 80, updated_at: null };
-  const alertRaw = Number(data.alert_at);
+  const proj = String(project || "").trim();
+  const row = data || {};
+  const src = proj ? ((row.projects || {})[proj] || {}) : row;
+  const alertRaw = Number(src.alert_at);
   return {
-    total: Number(data.total || 0),
+    total: Number(src.total || 0),
     alert_at: alertRaw > 0 ? alertRaw : 80,
-    updated_at: data.updated_at,
+    updated_at: src.updated_at || row.updated_at || null,
+    category_budgets: src.category_budgets || {},
+    project_budgets: row.project_budgets || {},
+    period: normalizePeriod(src.period),
+    project: proj,
   };
+}
+
+function sanitizeCategoryBudgets(raw) {
+  const out = {};
+  if (raw && typeof raw === "object") {
+    for (const [name, value] of Object.entries(raw)) {
+      const n = Number(value);
+      if (Number.isFinite(n) && n >= 0) out[name] = round2(n);
+    }
+  }
+  return out;
+}
+
+async function upsertBudgetRow(doc) {
+  const optional = ["projects", "project_budgets", "period"];
+  let attempt = { ...doc };
+  for (let i = 0; i <= optional.length; i++) {
+    const { error } = await supabase.from("budget").upsert(attempt, { onConflict: "user_id" });
+    if (!error) return null;
+    const missing = optional.find((k) => k in attempt && missingColumn(error, k));
+    if (!missing) return error;
+    const { [missing]: _omit, ...rest } = attempt;
+    attempt = rest;
+  }
+  return null;
 }
 
 async function putBudget(user, body) {
   const total = Number((body && body.total) || 0);
   const alertRaw = Number((body && body.alert_at) || 0);
-  const doc = {
-    user_id: user.id,
+  const project = String((body && body.project) || "").trim();
+  const entry = {
     total,
     alert_at: alertRaw > 0 ? alertRaw : 80,
     updated_at: new Date().toISOString(),
+    category_budgets: sanitizeCategoryBudgets(body && body.category_budgets),
+    period: normalizePeriod(body && body.period),
   };
-  const { error } = await supabase.from("budget").upsert(doc, { onConflict: "user_id" });
+
+  const { data: existing } = await supabase
+    .from("budget")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const row = existing || {};
+
+  const doc = {
+    user_id: user.id,
+    total: project ? Number(row.total || 0) : total,
+    alert_at: project ? Number(row.alert_at || 80) : entry.alert_at,
+    updated_at: entry.updated_at,
+    category_budgets: project ? row.category_budgets || {} : entry.category_budgets,
+    period: project ? normalizePeriod(row.period) : entry.period,
+    projects: { ...(row.projects || {}) },
+  };
+  if (project) doc.projects[project] = entry;
+
+  const error = await upsertBudgetRow(doc);
   if (error) throw fail(500, error.message);
-  return { total, alert_at: doc.alert_at, updated_at: doc.updated_at };
+
+  return {
+    ...entry,
+    total: project ? Number(row.total || 0) : total,
+    project,
+  };
 }
 
-async function stats(user) {
-  const list = await listExpenses(user);
-  const cats = await getCategories(user);
-  const budget = await getBudget(user);
+async function stats(user, project) {
+  const projectFilter = String(project || "").trim();
+  let list = await listExpenses(user);
+  if (projectFilter) {
+    list = list.filter((e) => (e.project || "") === projectFilter);
+  }
+  const cats = await getCategories(user, projectFilter);
+  const budget = await getBudget(user, projectFilter);
 
   const total = list.reduce((s, e) => s + Number(e.amount || 0), 0);
 
@@ -272,17 +438,49 @@ async function stats(user) {
     .sort()
     .map((m) => ({ month: m, total: round2(monthly[m]) }));
 
+  const period = normalizePeriod(budget.period);
+  const range = periodRange(period);
+  const inPeriod = list.filter((e) => {
+    const d = e.date || "";
+    return d >= range.start && d <= range.end;
+  });
+  const periodTotal = inPeriod.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const periodByCat = {};
+  cats.forEach((c) => {
+    periodByCat[c.name] = 0;
+  });
+  inPeriod.forEach((e) => {
+    const cat = Object.prototype.hasOwnProperty.call(periodByCat, e.category)
+      ? e.category
+      : "Otros";
+    periodByCat[cat] = (periodByCat[cat] || 0) + Number(e.amount || 0);
+  });
+  const period_by_category = order.map((name) => ({
+    category: name,
+    total: round2(periodByCat[name] || 0),
+  }));
+
   const budgetTotal = budget.total;
-  const progress = budgetTotal > 0 ? (total / budgetTotal) * 100 : 0;
+  const progress = budgetTotal > 0 ? (periodTotal / budgetTotal) * 100 : 0;
 
   return {
     total_spent: round2(total),
     count: list.length,
     budget: budgetTotal,
-    remaining: round2(budgetTotal - total),
+    remaining: round2(budgetTotal - periodTotal),
     progress: round2(progress),
     alert_at: budget.alert_at,
+    category_budgets: budget.category_budgets,
+    project_budgets: budget.project_budgets,
     by_category,
+    period,
+    period_label: range.label,
+    period_start: range.start,
+    period_end: range.end,
+    period_days: range.days,
+    period_elapsed_days: range.elapsedDays,
+    period_spent: round2(periodTotal),
+    period_by_category,
     monthly: monthlyList,
   };
 }
@@ -311,7 +509,7 @@ async function dispatch(method, url, body, config) {
 
   if (url === "/categories") {
     if (method === "get") {
-      const cats = await getCategories(user);
+      const cats = await getCategories(user, params.project);
       return { categories: [...cats].sort(sortOtrosLast) };
     }
     if (method === "post") return postCategory(user, body);
@@ -319,15 +517,18 @@ async function dispatch(method, url, body, config) {
 
   const catName = matchCategoryName(url);
   if (catName != null && method === "delete") {
-    return deleteCategory(user, catName);
+    return deleteCategory(user, catName, params.project);
   }
 
   if (url === "/expenses") {
     if (method === "get") {
       let list = await listExpenses(user);
-      const { q, category, start, end } = params;
+      const { q, category, project, start, end } = params;
       if (category && category !== "all") {
         list = list.filter((e) => e.category === category);
+      }
+      if (project && project !== "all") {
+        list = list.filter((e) => (e.project || "") === project);
       }
       if (q) {
         const re = new RegExp(String(q), "i");
@@ -373,9 +574,10 @@ async function dispatch(method, url, body, config) {
     }
   }
 
-  if (url === "/stats") return stats(user);
+  if (url === "/projects/rename" && method === "post") return renameProject(user, body);
+  if (url === "/stats") return stats(user, params.project);
   if (url === "/budget") {
-    if (method === "get") return getBudget(user);
+    if (method === "get") return getBudget(user, params.project);
     if (method === "put") return putBudget(user, body);
   }
   if (url === "/receipts/scan" && method === "post") return scan(user, body);

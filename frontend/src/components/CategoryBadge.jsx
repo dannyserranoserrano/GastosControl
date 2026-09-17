@@ -1,4 +1,4 @@
-import * as Icons from "lucide-react";
+import { iconFor } from "../lib/icons";
 import { COLOR_MAP } from "../lib/api";
 import { useCategories } from "../lib/categoriesContext";
 
@@ -7,7 +7,7 @@ export default function CategoryBadge({ category }) {
   const meta = categories.find((c) => c.name === category);
   const iconName = meta?.icon || "MoreHorizontal";
   const color = meta?.color || "stone";
-  const Icon = Icons[iconName] || Icons.MoreHorizontal;
+  const Icon = iconFor(iconName);
   const cls = (COLOR_MAP[color] || COLOR_MAP.stone).cls;
 
   return (

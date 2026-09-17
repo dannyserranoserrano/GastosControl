@@ -8,9 +8,25 @@
       name="description"
       content="GastoControl — Gestor de gastos: escanea tickets con IA, controla tu presupuesto y exporta tus gastos."
     />
-    <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <script>
+      (function () {
+        try {
+          var m = localStorage.getItem("gastocontrol:theme") || "system";
+          var dark =
+            m === "dark" ||
+            (m === "system" &&
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="GastoControl" />
     <title>GastoControl — Controla tus gastos</title>
   </head>
   <body>
