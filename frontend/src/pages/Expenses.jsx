@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { api, eur, toBackendUrl, exportCsv, budgetCrossing } from "../lib/api";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { api, eur, toBackendUrl, exportCsv, budgetCrossing, verifyExpenseSaved } from "../lib/api";
 import { findDuplicates } from "../lib/findDuplicates";
 import { useCategories } from "../lib/categoriesContext";
 import { Card } from "../components/ui/card";
@@ -8,7 +8,6 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../components/ui/alert-dialog";
 import CategoryBadge from "../components/CategoryBadge";
 import ExpenseForm from "../components/ExpenseForm";
 import AutoRulesManager from "../components/AutoRulesManager";
@@ -18,7 +17,7 @@ import { useRecurring } from "../lib/useRecurring";
 import { useProjects } from "../lib/projectsContext";
 import { loadClosed } from "../lib/closedMonths";
 import { toast } from "sonner";
-import { Plus, Download, Search, Trash2, Pencil, ImageIcon, Copy, Calendar, X, Lock } from "lucide-react";
+import { Plus, Download, Search, Trash2, Pencil, ImageIcon, Copy, CopyPlus, Calendar, X, Lock } from "lucide-react";
 
 const pad = (n) => String(n).padStart(2, "0");
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -94,6 +93,14 @@ export default function Expenses() {
 
   useRecurring(load);
 
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  useEffect(() => {
+    const handler = () => loadRef.current?.();
+    window.addEventListener("expenses:changed", handler);
+    return () => window.removeEventListener("expenses:changed", handler);
+  }, []);
+
   const create = async (payload) => {
     if (isLocked(payload.date)) {
       toast.error("El mes está cerrado. Reábrelo en el Informe para añadir gastos.");
@@ -102,7 +109,7 @@ export default function Expenses() {
     try {
       const params = activeProject ? { project: activeProject } : {};
       const beforeStats = (await api.get("/stats", { params })).data || {};
-      await api.post("/expenses", { ...payload, project: payload.project || activeProject || "" });
+      const created = (await api.post("/expenses", { ...payload, project: payload.project || activeProject || "" })).data;
       const afterStats = (await api.get("/stats", { params })).data || {};
       const cross = budgetCrossing(
         beforeStats.progress,
@@ -115,7 +122,21 @@ export default function Expenses() {
       }
       toast.success("Gasto añadido");
       setOpenAdd(false);
+      const createdDate = String(payload.date || "");
+      if ((start && createdDate && createdDate < start) || (end && createdDate && createdDate > end)) {
+        setStart("");
+        setEnd("");
+        toast.info("Se quitaron los filtros de fecha para mostrar el gasto.");
+      }
       load();
+      if (created?.id) {
+        const v = await verifyExpenseSaved(created.id, activeProject);
+        if (!v.found) {
+          toast.error("El gasto no se guardó realmente. Revisa la conexión o la migración de Supabase.");
+        } else if (!v.projectOk) {
+          toast.warning("El gasto se guardó sin el proyecto activo. Ejecuta supabase/schema.sql (columnas project/receipts).");
+        }
+      }
     } catch (e) {
       toast.error("No se pudo añadir el gasto");
     }
@@ -156,11 +177,47 @@ export default function Expenses() {
     }
     try {
       await api.delete(`/expenses/${id}`);
-      toast.success("Gasto eliminado");
       load();
+      if (target) {
+        toast.success("Gasto eliminado", {
+          duration: 8000,
+          action: {
+            label: "Deshacer",
+            onClick: async () => {
+              try {
+                const { id: _omit, created_at, ...rest } = target;
+                await api.post("/expenses", rest);
+                toast.success("Gasto restaurado");
+                load();
+              } catch {
+                toast.error("No se pudo restaurar");
+              }
+            },
+          },
+        });
+      } else {
+        toast.success("Gasto eliminado");
+      }
     } catch {
       toast.error("Error al eliminar");
     }
+  };
+
+  const [duplicateItem, setDuplicateItem] = useState(null);
+  const duplicate = (e) => {
+    const today = new Date().toISOString().slice(0, 10);
+    setDuplicateItem({
+      vendor: e.vendor || "",
+      date: today,
+      amount: e.amount ?? "",
+      category: e.category || "General",
+      project: e.project || activeProject || "",
+      notes: e.notes || "",
+    });
+  };
+  const createDuplicate = async (payload) => {
+    await create(payload);
+    setDuplicateItem(null);
   };
 
   return (
@@ -478,36 +535,28 @@ export default function Expenses() {
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-testid={`btn-delete-${e.id}`}
-                        disabled={isLocked(e.date)}
-                        className="rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-40"
-                        title={isLocked(e.date) ? "Mes cerrado" : "Eliminar"}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar este gasto?</AlertDialogTitle>
-                        <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          data-testid={`btn-confirm-delete-${e.id}`}
-                          onClick={() => remove(e.id)}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          Eliminar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    data-testid={`btn-duplicate-${e.id}`}
+                    onClick={() => duplicate(e)}
+                    disabled={isLocked(e.date)}
+                    className="rounded-lg disabled:opacity-40"
+                    title={isLocked(e.date) ? "Mes cerrado" : "Duplicar gasto"}
+                  >
+                    <CopyPlus className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    data-testid={`btn-delete-${e.id}`}
+                    onClick={() => remove(e.id)}
+                    disabled={isLocked(e.date)}
+                    className="rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-40"
+                    title={isLocked(e.date) ? "Mes cerrado" : "Eliminar"}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </li>
               );
@@ -524,6 +573,23 @@ export default function Expenses() {
           </DialogHeader>
           {editItem && (
             <ExpenseForm initial={editItem} onSubmit={update} submitLabel="Guardar cambios" />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate dialog */}
+      <Dialog open={!!duplicateItem} onOpenChange={(o) => !o && setDuplicateItem(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Duplicar gasto</DialogTitle>
+          </DialogHeader>
+          {duplicateItem && (
+            <ExpenseForm
+              initial={duplicateItem}
+              onSubmit={createDuplicate}
+              submitLabel="Guardar copia"
+              defaultProject={activeProject}
+            />
           )}
         </DialogContent>
       </Dialog>

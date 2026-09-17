@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useProjects } from "../lib/projectsContext";
 import { isMonthClosed, isDismissed, dismissMonth, toggleMonth } from "../lib/closedMonths";
+import { sendMobile } from "../lib/mobileNotify";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
 import { Lock, X } from "lucide-react";
@@ -36,17 +37,15 @@ export default function MonthCloseReminder() {
     const tag = `close_month_${activeProject || "general"}_${target}`;
     if (firedRef.current.has(tag)) return;
     firedRef.current.add(tag);
+    const body = `El mes de ${monthName(target)}${activeProject ? ` (${activeProject})` : ""} no está cerrado.`;
     try {
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Cierre de mes pendiente", {
-          body: `El mes de ${monthName(target)}${activeProject ? ` (${activeProject})` : ""} no está cerrado.`,
-          tag,
-          icon: "/favicon.svg",
-        });
+        new Notification("Cierre de mes pendiente", { body, tag, icon: "/favicon.svg" });
       }
     } catch {
       /* ignore */
     }
+    sendMobile("month_close", "Cierre de mes pendiente", body).catch(() => {});
   }, [visible, activeProject, target]);
 
   if (!visible) return null;

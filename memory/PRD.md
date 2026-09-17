@@ -67,6 +67,9 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Vista de calendario (sección propia `/calendario`): gastos por día del mes con total y detalle al pulsar
 - [x] Ajustes (`/ajustes`): página única con pestañas para Proyecto (selección y gestión), Presupuesto, Categorías, Ahorro, Notificaciones y Datos. La configuración de notificaciones sale del Panel y el selector de proyecto sale de la cabecera.
 - [x] Alertas de recurrentes vencidos: aviso en el Panel (con notificación opcional) y acciones para generar el recurrente o todos de una vez
+- [x] Notificaciones al móvil (gratuitas): canales **Telegram** (Bot API) y **correo EmailJS**, configurables en Ajustes → Alertas, con selección de avisos y prueba por canal
+- [x] Deshacer al eliminar, duplicar gasto y botón flotante en móvil (abre el escáner)
+- [x] Detección real de guardado: verificación tras crear (existe en BD y con el proyecto correcto)
 - [x] Notificaciones proactivas (browser notifications + panel de configuración, avisos de presupuesto y proyección)
 - [x] PWA: instalable, offline (shell precacheado) y manifest con iconos
 - [x] Galería dedicada de tickets

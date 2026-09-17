@@ -24,16 +24,15 @@ function fail(status, detail) {
   return err;
 }
 
-// Detecta si un error de PostgREST se debe a una columna inexistente
-// (p. ej. `project`/`project_budgets` cuando no se ha ejecutado el schema actualizado).
+// Detecta si un error de PostgREST se debe a una columna inexistente concreta
+// (p. ej. `project`/`receipts` cuando no se ha ejecutado el schema actualizado).
+// Debe ser específico: el error nombra la columna, así no confundimos una columna
+// inexistente con otra (lo que provocaba guardar filas sin `project`, etc.).
 function missingColumn(error, column) {
   if (!error) return false;
-  const msg = String(error.message || "");
-  return (
-    error.code === "PGRST204" ||
-    error.code === "42703" ||
-    msg.toLowerCase().includes(String(column).toLowerCase())
-  );
+  const msg = String(error.message || "").toLowerCase();
+  const col = String(column).toLowerCase();
+  return msg.includes(col);
 }
 
 const sortOtrosLast = (a, b) => {

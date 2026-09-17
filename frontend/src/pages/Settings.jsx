@@ -1,10 +1,11 @@
 import { useSearchParams } from "react-router-dom";
-import { FolderKanban, Wallet, Tag, PiggyBank, Bell, Database } from "lucide-react";
+import { FolderKanban, Wallet, Tag, PiggyBank, Bell, Database, BellRing } from "lucide-react";
 import ProjectSettings from "../components/ProjectSettings";
 import BudgetSettings from "../components/BudgetSettings";
 import CategoryManager from "../components/CategoryManager";
 import GoalsManager from "../components/GoalsManager";
 import BackupManager from "../components/BackupManager";
+import MobileAlertSettings from "../components/MobileAlertSettings";
 import { useNotificationPrefs, NotificationSettingsPanel } from "../lib/useNotifications.jsx";
 
 const TABS = [
@@ -13,6 +14,7 @@ const TABS = [
   { id: "categorias", label: "Categorías", icon: Tag },
   { id: "ahorro", label: "Ahorro", icon: PiggyBank },
   { id: "notificaciones", label: "Notificaciones", icon: Bell },
+  { id: "alertas", label: "Alertas", icon: BellRing },
   { id: "datos", label: "Datos", icon: Database },
 ];
 
@@ -77,6 +79,7 @@ export default function Settings() {
               />
             </div>
           )}
+          {active === "alertas" && <MobileAlertSettings />}
           {active === "datos" && <BackupManager />}
         </div>
       </div>

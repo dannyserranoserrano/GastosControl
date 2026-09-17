@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { sendMobile } from "./mobileNotify";
 
 const NOTIF_KEY = "gastocontrol:notif_prefs";
 
@@ -110,19 +111,20 @@ export function useNotifications(stats) {
       spentMap[c.category] = c.total;
     });
 
-    const fireNotif = (title, body, tag) => {
+    const fireNotif = (title, body, tag, eventKey) => {
       if (firedRef.current.has(tag)) return;
       firedRef.current.add(tag);
       const sent = sendBrowserNotif(title, body, tag);
       if (!sent) {
         toast.warning(title, { description: body, id: tag });
       }
+      if (eventKey) sendMobile(eventKey, title, body).catch(() => {});
     };
 
     if (overBudget && prefs.budget_over) {
-      fireNotif("Presupuesto excedido", `Has gastado ${periodSpent}€ de ${stats.budget}€ este ${periodLabel}`, "budget_over");
+      fireNotif("Presupuesto excedido", `Has gastado ${periodSpent}€ de ${stats.budget}€ este ${periodLabel}`, "budget_over", "budget_over");
     } else if (stats.progress >= alertAt && prefs.budget_warn) {
-      fireNotif("Aviso de presupuesto", `Has alcanzado el ${stats.progress.toFixed(1)}% de tu presupuesto (${periodLabel})`, "budget_warn");
+      fireNotif("Aviso de presupuesto", `Has alcanzado el ${stats.progress.toFixed(1)}% de tu presupuesto (${periodLabel})`, "budget_warn", "budget_warn");
     }
 
     const issues = Object.entries(cb)
@@ -135,9 +137,9 @@ export function useNotifications(stats) {
 
     for (const issue of issues) {
       if (issue.over && prefs.budget_over) {
-        fireNotif(`Presupuesto excedido: ${issue.cat}`, `${issue.spent}€ de ${issue.limit}€ este ${periodLabel}`, `cat_over_${issue.cat}`);
+        fireNotif(`Presupuesto excedido: ${issue.cat}`, `${issue.spent}€ de ${issue.limit}€ este ${periodLabel}`, `cat_over_${issue.cat}`, "budget_over");
       } else if (issue.warn && prefs.budget_warn) {
-        fireNotif(`Aviso: ${issue.cat}`, `Cerca del límite (${issue.spent}€ de ${issue.limit}€)`, `cat_warn_${issue.cat}`);
+        fireNotif(`Aviso: ${issue.cat}`, `Cerca del límite (${issue.spent}€ de ${issue.limit}€)`, `cat_warn_${issue.cat}`, "budget_warn");
       }
     }
 
@@ -146,9 +148,9 @@ export function useNotifications(stats) {
       const forecast = Math.round(dailyAvg * totalDays * 100) / 100;
       const budgetTotal = Number(stats.budget || 0);
       if (budgetTotal > 0 && forecast > budgetTotal && prefs.projection_over) {
-        fireNotif("Proyección alarmante", `Ritmo actual: ${forecast}€ estimado para el ${periodLabel} (tope: ${budgetTotal}€)`, "proj_over");
+        fireNotif("Proyección alarmante", `Ritmo actual: ${forecast}€ estimado para el ${periodLabel} (tope: ${budgetTotal}€)`, "proj_over", "projection_over");
       } else if (budgetTotal > 0 && forecast >= budgetTotal * (alertAt / 100) && prefs.projection_warn) {
-        fireNotif("Proyección en alerta", `Estimación del ${periodLabel}: ${forecast}€ (${alertAt}%+ del presupuesto)`, "proj_warn");
+        fireNotif("Proyección en alerta", `Estimación del ${periodLabel}: ${forecast}€ (${alertAt}%+ del presupuesto)`, "proj_warn", "projection_warn");
       }
     }
   }, [stats, prefs]);

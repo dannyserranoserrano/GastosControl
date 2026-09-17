@@ -107,6 +107,7 @@ GastosApp/
         │   ├── findDuplicates.js (detección de gastos duplicados por importe/fecha/proveedor)
         │   ├── autoRules.js     (sugerencia de categoría/proyecto por historial y reglas)
         │   ├── backup.js        (exportar/importar copia de seguridad en JSON)
+        │   ├── mobileNotify.js  (envío a Telegram y EmailJS)
         │   ├── csv.js           (parseo/validación de CSV para importación)
         │   ├── goals.js         (objetivos de ahorro y aportaciones, por proyecto)
         │   ├── recurring.js     (plantillas y cálculo de gastos recurrentes pendientes)
@@ -140,6 +141,8 @@ GastosApp/
         │   ├── ThemeToggle.jsx
         │   ├── ProjectSettings.jsx
         │   ├── BudgetSettings.jsx
+        │   ├── MobileAlertSettings.jsx
+        │   ├── QuickAddButton.jsx
         │   └── ui/              (button, card, input, label, textarea, progress, select, dialog, alert-dialog, dropdown-menu)
         └── pages/
             ├── Dashboard.jsx    (/)
@@ -237,11 +240,14 @@ uvicorn server:app --reload
 - **Recordatorio de cierre de mes** (`MonthCloseReminder.jsx`): banner en el Panel cuando faltan ≤2 días para acabar el mes (o en los primeros 5 días del siguiente si el mes anterior sigue abierto), con acciones «Cerrar mes» y «Ahora no» (descarte persistido en `gastocontrol:month_close_dismissed`). Si hay permiso de notificaciones, también lanza una notificación del navegador una vez por mes.
 - **Vista de calendario** (`Calendar.jsx` + `MonthCalendar.jsx`): página propia `/calendario` con selector de mes (y proyecto activo); rejilla mensual (semana empieza en lunes) con el gasto por día y detalle al pulsar un día. Resumen de total, nº de gastos y días con gasto.
 - **Navegación agrupada** (`Header.jsx` + `components/ui/dropdown-menu.jsx`): escritorio con grupos desplegables — **Panel**, **Gastos ▾** (Todos los gastos, Escanear, Tickets), **Análisis ▾** (Informe mensual, Calendario) y **Ajustes** (enlace directo) — más CTA **Escanear**, tema y usuario. En móvil (`< lg`) se muestra una **hamburguesa** que abre un drawer lateral (por la derecha, fuera del `<header>` para que el `backdrop-blur` no lo confine). El selector de proyecto ya no está en la cabecera; se gestiona en Ajustes.
-- **Ajustes** (`Settings.jsx`, ruta `/ajustes`): página única con pestañas (por `?tab=`) — **Proyecto** (`ProjectSettings.jsx`), **Presupuesto** (`BudgetSettings.jsx`: importe, periodo, umbral y topes por categoría), **Categorías** (`CategoryManager`), **Ahorro** (`GoalsManager`), **Notificaciones** (`NotificationSettingsPanel` con `useNotificationPrefs`) y **Datos** (`BackupManager`). `/presupuesto` redirige a `/ajustes?tab=presupuesto`.
+- **Ajustes** (`Settings.jsx`, ruta `/ajustes`): página única con pestañas (por `?tab=`) — **Proyecto** (`ProjectSettings.jsx`), **Presupuesto** (`BudgetSettings.jsx`: importe, periodo, umbral y topes por categoría), **Categorías** (`CategoryManager`), **Ahorro** (`GoalsManager`), **Notificaciones** (`NotificationSettingsPanel` con `useNotificationPrefs`), **Alertas** (`MobileAlertSettings.jsx`) y **Datos** (`BackupManager`). `/presupuesto` redirige a `/ajustes?tab=presupuesto`.
 - **Copia de seguridad** (`backup.js` + `BackupManager.jsx`): en `/presupuesto`, exporta/importa en JSON los datos locales (IndexedDB `gastocontrol:categories|project_categories|expenses|budget` y claves `localStorage` de proyectos, objetivos, recurrentes, reglas y preferencias). La restauración reemplaza los datos locales y recarga la app; con sesión Supabase solo afecta al almacenamiento local del dispositivo.
 - **Exportar informe a PDF**: botón «PDF» en `/informe` que usa `window.print()`. Al imprimir quita temporalmente la clase `.dark` (tema claro), añade `body.printing-report` y el CSS de `@media print` en `index.css` deja visible solo `#print-area` (con `.no-print` oculto).
 - **Previsión de recurrentes** (`RecurringForecast.jsx`): tarjeta en el Panel con las plantillas recurrentes activas (del proyecto activo o todas), total mensual, importe ya registrado vs pendiente y estado por plantilla (`Registrado`/`Pendiente`/`Vencido`). Se recarga al cambiar de proyecto o al actualizarse los gastos.
 - **Alertas de recurrentes vencidos** (`RecurringOverdueAlert.jsx`): banner en el Panel cuando hay recurrentes activos cuyo día ya pasó y no se generaron este mes; permite **Generar** uno o **Generar todos** (usa `generateRecurringNow` de `useRecurring.js`) y lanza una notificación del navegador (una vez por mes/proyecto) si hay permiso.
+- **Notificaciones al móvil** (`mobileNotify.js` + `MobileAlertSettings.jsx`): canales gratuitos **Telegram** (Bot API: token + chat ID) y **correo EmailJS** (service/template/public key + destinatario), configurables en **Ajustes → Alertas** (`gastocontrol:mobile_notify`, local al dispositivo) con selección de eventos y **Enviar prueba**. `sendMobile(eventKey, title, body)` se invoca desde `useNotifications` (presupuesto/proyección), `RecurringOverdueAlert` (recurrentes vencidos) y `MonthCloseReminder` (cierre de mes). Telegram usa POST JSON con fallback `no-cors`.
+- **Alta rápida y edición**: **Deshacer** al eliminar (toast con acción que recrea el gasto, sin papelera); **duplicar gasto** (abre el formulario precargado, sin copiar tickets); y **botón flotante** (`QuickAddButton.jsx`, visible en `< md`) que abre el **escáner** (`/escanear`) desde cualquier pantalla.
+- **Verificación al guardar** (`verifyExpenseSaved` en `api.js`): tras crear un gasto se relee la lista; si no existe, avisa de fallo real de guardado, y si existe pero su `project` no coincide con el proyecto activo, avisa de migración pendiente en Supabase. `missingColumn()` (supabaseData) compara por **nombre de columna concreto** para no descartar `project` al reintentar por otra columna ausente (p. ej. `receipts`).
 - **Varios tickets por gasto**: cada gasto guarda `receipts: [{ path, url }]` (además de `receipt_path`/`receipt_url` del primero, por compatibilidad). `ExpenseForm` permite adjuntar/eliminar varias imágenes (redimensionadas a data-URL en local; subidas a Storage en Supabase). La lista de `/gastos` muestra la primera con contador y previsualiza todas; la galería agrupa varias por gasto. Requiere la columna `expenses.receipts` (jsonb) en Supabase (con fallback si falta).
 - **Galería de tickets** (`/galeria`): grid de boletos escaneados con búsqueda, filtro por categoría, vista previa con zoom y descarga.
 - El backend FastAPI (opcional) pasó un smoke test previo (ver `test_reports/iteration_1.json`).

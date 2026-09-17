@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import Header from "@/components/Header";
 import MigrationBanner from "@/components/MigrationBanner";
+import QuickAddButton from "@/components/QuickAddButton";
 import { CategoriesProvider } from "@/lib/categoriesContext";
 import { ProjectsProvider } from "@/lib/projectsContext";
 import { AuthProvider } from "@/lib/authContext";
@@ -47,6 +48,7 @@ function App() {
                   <Route path="/login" element={<Login />} />
                 </Routes>
               </Suspense>
+              <QuickAddButton />
               <Toaster position="top-right" richColors closeButton />
             </CategoriesProvider>
           </ProjectsProvider>

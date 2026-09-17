@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { api, eur } from "../lib/api";
 import { findDuplicates } from "../lib/findDuplicates";
 import { useNotifications } from "../lib/useNotifications.jsx";
@@ -47,6 +47,14 @@ export default function Dashboard() {
   };
 
   useEffect(() => { load(); }, [activeProject]); // eslint-disable-line
+
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  useEffect(() => {
+    const handler = () => loadRef.current?.();
+    window.addEventListener("expenses:changed", handler);
+    return () => window.removeEventListener("expenses:changed", handler);
+  }, []);
 
   const duplicates = useMemo(() => findDuplicates(allExpenses), [allExpenses]);
 

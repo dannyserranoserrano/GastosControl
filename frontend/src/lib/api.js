@@ -85,6 +85,24 @@ export function budgetCrossing(beforeProgress, afterProgress, alertAt) {
   return null;
 }
 
+/**
+ * Verifica que un gasto recién creado existe realmente y quedó asociado al proyecto esperado.
+ * Sirve para detectar el caso de Supabase sin las columnas migradas (se guardaba sin `project`).
+ */
+export async function verifyExpenseSaved(createdId, expectedProject) {
+  if (!createdId) return { found: false };
+  try {
+    const { data } = await api.get("/expenses");
+    const row = (data || []).find((e) => e.id === createdId);
+    if (!row) return { found: false };
+    const proj = String(row.project || "");
+    const exp = String(expectedProject || "");
+    return { found: true, project: proj, projectOk: !exp || proj === exp };
+  } catch {
+    return { found: false, error: true };
+  }
+}
+
 export {
   COLOR_MAP,
   ALLOWED_ICONS,

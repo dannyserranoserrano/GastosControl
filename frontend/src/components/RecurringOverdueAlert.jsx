@@ -3,6 +3,7 @@ import { eur } from "../lib/api";
 import { useProjects } from "../lib/projectsContext";
 import { loadTemplates } from "../lib/recurring";
 import { generateRecurringNow } from "../lib/useRecurring";
+import { sendMobile } from "../lib/mobileNotify";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
 import { AlertTriangle, Zap } from "lucide-react";
@@ -36,17 +37,15 @@ export default function RecurringOverdueAlert({ onGenerated }) {
     const tag = `overdue_${activeProject || "general"}_${ym}`;
     if (firedRef.current.has(tag)) return;
     firedRef.current.add(tag);
+    const body = `Tienes ${overdue.length} gasto(s) recurrente(s) pendiente(s) este mes.`;
     try {
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Recurrentes vencidos", {
-          body: `Tienes ${overdue.length} gasto(s) recurrente(s) pendiente(s) este mes.`,
-          tag,
-          icon: "/favicon.svg",
-        });
+        new Notification("Recurrentes vencidos", { body, tag, icon: "/favicon.svg" });
       }
     } catch {
       /* ignore */
     }
+    sendMobile("recurring_overdue", "Recurrentes vencidos", body).catch(() => {});
   }, [overdue.length, activeProject, ym]);
 
   if (overdue.length === 0) return null;
