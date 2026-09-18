@@ -5,7 +5,7 @@
 #   ./deploy/deploy.sh
 #
 # Variables de entorno opcionales:
-#   DOMAIN    dominio público (por defecto gastoscontrol.villadeciria.com)
+#   DOMAIN    dominio público (por defecto gastocontrol.villadeciria.com)
 #   WEB_ROOT  DocumentRoot del vhost (por defecto /var/www/gastoscontrol)
 #   WEB_USER  usuario del servidor web (por defecto www-data)
 #
@@ -15,7 +15,7 @@ set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRONTEND_DIR="$APP_DIR/frontend"
-DOMAIN="${DOMAIN:-gastoscontrol.villadeciria.com}"
+DOMAIN="${DOMAIN:-gastocontrol.villadeciria.com}"
 WEB_ROOT="${WEB_ROOT:-/var/www/gastoscontrol}"
 WEB_USER="${WEB_USER:-www-data}"
 

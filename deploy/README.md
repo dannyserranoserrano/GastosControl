@@ -17,7 +17,7 @@ Sustituye los marcadores: `__DOMAIN__`, `__OCR_PORT__` (p. ej. `8010`), `__USER_
 
 Compila el frontend con `VITE_BACKEND_URL=https://$DOMAIN`, sincroniza `dist/` en
 `$WEB_ROOT` y ajusta el propietario. Variables opcionales: `DOMAIN`
-(por defecto `gastoscontrol.villadeciria.com`), `WEB_ROOT` (`/var/www/gastoscontrol`)
+(por defecto `gastocontrol.villadeciria.com`), `WEB_ROOT` (`/var/www/gastoscontrol`)
 y `WEB_USER` (`www-data`). Ejemplo:
 
 ```bash
