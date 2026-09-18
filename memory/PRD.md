@@ -74,7 +74,12 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] PWA: instalable, offline (shell precacheado) y manifest con iconos
 - [x] Instalación como app: banner «Instalar» (Android/escritorio) e indicaciones para Safari en iOS (con iconos apple-touch multi-tamaño)
 - [x] Plantillas de despliegue en `deploy/` (Apache + HTTPS + systemd del OCR + DuckDNS) sin secretos
-- [x] Galería dedicada de tickets
+- [x] Galería dedicada de tickets (con orden por fecha o categoría)
+- [x] Cabecera con el proyecto activo y estado real de los datos (nube/servidor/local/offline)
+- [x] Filtro de proyectos retirado de `/gastos` (el proyecto activo es global)
+- [x] Desviación y consumo del presupuesto acumulados (enero→mes) cuando el presupuesto es anual
+- [x] Topes por categoría movidos a Ajustes → Categorías
+- [x] Botones de cabecera con scroll horizontal en móvil (Gastos e Informe)
 
 ## Backlog
 - (vacío)
