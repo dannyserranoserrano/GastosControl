@@ -53,7 +53,9 @@ function traducirError(msg) {
   if (m.includes("password should be at least")) return "La contraseña debe tener al menos 6 caracteres";
   if (m.includes("unable to validate email") || m.includes("invalid email")) return "El correo no es válido";
   if (m.includes("rate limit") || m.includes("too many")) return "Demasiados intentos, espera un momento";
-  if (m.includes("captcha")) return "Verificación de seguridad fallida, inténtalo de nuevo";
+  if (m.includes("captcha")) {
+    return "CAPTCHA no válido: revisa que la Site Key (frontend) y la Secret Key (Supabase) sean del mismo widget de Turnstile";
+  }
   return msg || "No se pudo completar la operación";
 }
 
