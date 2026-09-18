@@ -11,7 +11,7 @@ set -euo pipefail
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$APP_DIR/deploy"
 DEST="/etc/apache2/sites-available"
-DOMAIN="${1:-${DOMAIN:-gastos.villadeciria.com}}"
+DOMAIN="${1:-${DOMAIN:-gastoscontrol.villadeciria.com}}"
 OCR_PORT="${2:-${OCR_PORT:-8010}}"
 
 echo "==> Instalando vhosts para ${DOMAIN} (OCR 127.0.0.1:${OCR_PORT})"
