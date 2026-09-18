@@ -80,6 +80,7 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Desviación y consumo del presupuesto acumulados (enero→mes) cuando el presupuesto es anual
 - [x] Topes por categoría movidos a Ajustes → Categorías
 - [x] Botones de cabecera con scroll horizontal en móvil (Gastos e Informe)
+- [x] Logout con limpieza total del almacenamiento local del dispositivo (sin dejar rastro)
 
 ## Backlog
 - (vacío)

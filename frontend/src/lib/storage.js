@@ -49,3 +49,7 @@ export function dbSet(key, value) {
 export function dbDel(key) {
   return withStore("readwrite", (s) => s.delete(key));
 }
+
+export function dbClear() {
+  return withStore("readwrite", (s) => s.clear());
+}

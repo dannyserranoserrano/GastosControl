@@ -222,6 +222,7 @@ uvicorn server:app --reload
 - Frontend migrado a **Vite** (antes CRA/CRACO). El build de producción compila OK.
 - Añadido **modo local-first** (datos en el navegador) y **Supabase Auth** (login Google/Microsoft/GitHub) en el cliente.
 - Persistencia por usuario en Supabase (Postgres + Storage) y **migración opcional de datos locales → cuenta** al iniciar sesión.
+- **Logout limpia el dispositivo**: `signOut` (`authContext.jsx`) cierra la sesión de Supabase y borra los datos locales (`clearLocalData` en `backup.js`: todo el IndexedDB + claves `gastocontrol:` de `localStorage`) antes de recargar, para no dejar rastro de gastos/proyectos preferencias en equipos compartidos. Conserva el tema claro/oscuro.
 - **Arquitectura "Opción C"**: datos por usuario en Supabase (con sesión) o local (invitado); el escaneo de tickets va siempre al backend FastAPI OCR (`scanReceipt` en `api.js`). MongoDB en el backend es opcional (modo OCR-only sin Mongo desplegable gratis).
 - **Alertas de presupuesto**: umbral configurable (default 80%, campo `alert_at`) y aviso al exceder (banner en Dashboard + toast al cruzar el umbral).
 - **Presupuesto por categoría**: tope por categoría (mapa `category_budgets` en el registro de presupuesto) editable en **Ajustes → Categorías** (`CategoryManager`), con barras de progreso y alertas por categoría en el Dashboard. `BudgetSettings` conserva importe, periodo y umbral, y preserva los `category_budgets` al guardar.

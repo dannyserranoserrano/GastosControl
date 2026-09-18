@@ -1,4 +1,4 @@
-import { dbGet, dbSet } from "./storage";
+import { dbGet, dbSet, dbClear } from "./storage";
 
 export const BACKUP_VERSION = 1;
 
@@ -101,4 +101,27 @@ export async function importBackup(text) {
     ),
     exported_at: data.exported_at || null,
   };
+}
+
+/**
+ * Borra TODOS los datos locales del dispositivo (IndexedDB completo + claves
+ * `gastocontrol:` de localStorage) para no dejar rastro en un equipo compartido.
+ * Se usa al cerrar sesión. Conserva el tema claro/oscuro salvo que se pase
+ * `{ keepTheme: false }`.
+ */
+export async function clearLocalData({ keepTheme = true } = {}) {
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("gastocontrol:")) keys.push(k);
+    }
+    for (const k of keys) {
+      if (keepTheme && k === "gastocontrol:theme") continue;
+      localStorage.removeItem(k);
+    }
+  } catch {
+    /* ignore */
+  }
+  await dbClear();
 }

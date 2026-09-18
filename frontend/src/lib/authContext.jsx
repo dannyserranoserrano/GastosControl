@@ -6,6 +6,7 @@ import {
   markMigratedFor,
   importLocalToCloud,
 } from "./migrate";
+import { clearLocalData } from "./backup";
 
 const AuthCtx = createContext({
   user: null,
@@ -99,8 +100,16 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
+    try {
+      if (supabase) await supabase.auth.signOut();
+    } catch {
+      // Aunque falle la red, limpiamos igualmente el dispositivo.
+    }
+    try {
+      await clearLocalData();
+    } catch {
+      /* ignore */
+    }
     window.location.reload();
   }, []);
 
