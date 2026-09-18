@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useNavigate, Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Mail, Lock, LogIn, UserPlus } from "lucide-react";
+import Turnstile, { turnstileEnabled } from "@/components/Turnstile";
 
 const PROVIDERS = [
   { id: "google", label: "Continuar con Google", Icon: GoogleIcon },
@@ -52,6 +53,7 @@ function traducirError(msg) {
   if (m.includes("password should be at least")) return "La contraseña debe tener al menos 6 caracteres";
   if (m.includes("unable to validate email") || m.includes("invalid email")) return "El correo no es válido";
   if (m.includes("rate limit") || m.includes("too many")) return "Demasiados intentos, espera un momento";
+  if (m.includes("captcha")) return "Verificación de seguridad fallida, inténtalo de nuevo";
   return msg || "No se pudo completar la operación";
 }
 
@@ -68,6 +70,8 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [providerBusy, setProviderBusy] = useState(null);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const [turnstileNonce, setTurnstileNonce] = useState(0);
   const navigate = useNavigate();
 
   if (user) {
@@ -77,23 +81,30 @@ export default function Login() {
   const submit = async (e) => {
     e.preventDefault();
     if (busy) return;
+    if (turnstileEnabled && !captchaToken) {
+      toast.error("Completa la verificación de seguridad");
+      return;
+    }
     setBusy(true);
     try {
       if (mode === "signup") {
-        const data = await signUpWithPassword(email.trim(), password);
+        const data = await signUpWithPassword(email.trim(), password, captchaToken);
         if (!data?.session) {
           toast.info("Revisa tu correo para confirmar la cuenta");
         } else {
           toast.success("Cuenta creada");
         }
       } else {
-        await signInWithPassword(email.trim(), password);
+        await signInWithPassword(email.trim(), password, captchaToken);
         toast.success("Bienvenido");
       }
     } catch (err) {
       toast.error(traducirError(err?.message));
     } finally {
       setBusy(false);
+      // El token de Turnstile es de un solo uso: se descarta y se pinta uno nuevo.
+      setCaptchaToken(null);
+      setTurnstileNonce((n) => n + 1);
     }
   };
 
@@ -164,6 +175,12 @@ export default function Login() {
                   />
                 </div>
               </div>
+
+              {turnstileEnabled && (
+                <div className="flex justify-center pt-1">
+                  <Turnstile key={turnstileNonce} onVerify={setCaptchaToken} />
+                </div>
+              )}
 
               <Button
                 type="submit"

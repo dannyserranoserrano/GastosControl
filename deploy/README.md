@@ -102,6 +102,14 @@ sudo /usr/local/bin/duckdns-update.sh
   deseado, activa la **confirmación por email**, añade **CAPTCHA** si el registro es
   abierto y deshabilita los proveedores que no uses. En *URL Configuration* deja solo
   los orígenes de confianza (`https://__DOMAIN__/**`).
+- **CAPTCHA (Cloudflare Turnstile, opcional)**:
+  1. Crea un widget en Cloudflare → Turnstile y copia *Site Key* y *Secret Key*.
+  2. Supabase → *Authentication → Bot and Abuse Protection*: activa **Turnstile** y pega
+     la *Secret Key*.
+  3. Pon la *Site Key* en `frontend/.env` como `VITE_TURNSTILE_SITE_KEY` y vuelve a
+     desplegar (`./deploy/deploy.sh`). El CSP ya permite `challenges.cloudflare.com`.
+  > Para probar sin Cloudflare: site key `1x00000000000000000000AA` y secret
+  > `1x0000000000000000000000000000000AA` (siempre pasan).
 
 ## 7) Comprobaciones
 ```bash

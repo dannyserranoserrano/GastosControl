@@ -86,15 +86,23 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   }, []);
 
-  const signInWithPassword = useCallback(async (email, password) => {
+  const signInWithPassword = useCallback(async (email, password, captchaToken) => {
     if (!supabase) throw new Error("Supabase no configurado");
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: captchaToken ? { captchaToken } : undefined,
+    });
     if (error) throw error;
   }, []);
 
-  const signUpWithPassword = useCallback(async (email, password) => {
+  const signUpWithPassword = useCallback(async (email, password, captchaToken) => {
     if (!supabase) throw new Error("Supabase no configurado");
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: captchaToken ? { captchaToken } : undefined,
+    });
     if (error) throw error;
     return data;
   }, []);
