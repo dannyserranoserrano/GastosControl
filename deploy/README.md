@@ -9,7 +9,24 @@ Sustituye los marcadores: `__DOMAIN__`, `__OCR_PORT__` (p. ej. `8010`), `__USER_
 - **Node 18+** y **Python 3.10+**.
 - Dominio con **HTTPS** (Supabase OAuth requiere https salvo localhost). Aquí se usa DuckDNS + Let's Encrypt.
 
-## 1) Frontend
+## 0) Despliegue rápido (recomendado)
+
+```bash
+./deploy/deploy.sh
+```
+
+Compila el frontend con `VITE_BACKEND_URL=https://$DOMAIN`, sincroniza `dist/` en
+`$WEB_ROOT` y ajusta el propietario. Variables opcionales: `DOMAIN`
+(por defecto `gastoscontrolapp.duckdns.org`), `WEB_ROOT` (`/var/www/gastoscontrol`)
+y `WEB_USER` (`www-data`). Ejemplo:
+
+```bash
+DOMAIN=mi.dominio.com WEB_ROOT=/var/www/gastoscontrol ./deploy/deploy.sh
+```
+
+> Solo pide `sudo` para copiar a `WEB_ROOT`; el build se hace como tu usuario.
+
+## 1) Frontend (manual)
 ```bash
 cd frontend
 cp .env.example .env     # rellena VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY y VITE_BACKEND_URL
