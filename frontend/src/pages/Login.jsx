@@ -64,11 +64,13 @@ export default function Login() {
     signIn,
     signInWithPassword,
     signUpWithPassword,
+    sendPasswordReset,
   } = useAuth();
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
   const [providerBusy, setProviderBusy] = useState(null);
   const [captchaToken, setCaptchaToken] = useState(null);
   const [turnstileNonce, setTurnstileNonce] = useState(0);
@@ -105,6 +107,23 @@ export default function Login() {
       // El token de Turnstile es de un solo uso: se descarta y se pinta uno nuevo.
       setCaptchaToken(null);
       setTurnstileNonce((n) => n + 1);
+    }
+  };
+
+  const forgot = async () => {
+    const mail = email.trim();
+    if (!mail) {
+      toast.error("Escribe tu correo para enviarte el enlace");
+      return;
+    }
+    setResetBusy(true);
+    try {
+      await sendPasswordReset(mail);
+      toast.success("Te hemos enviado un correo para restablecer la contraseña");
+    } catch (err) {
+      toast.error(traducirError(err?.message));
+    } finally {
+      setResetBusy(false);
     }
   };
 
@@ -198,6 +217,18 @@ export default function Login() {
                   </>
                 )}
               </Button>
+
+              {mode === "signin" && (
+                <button
+                  type="button"
+                  onClick={forgot}
+                  disabled={resetBusy}
+                  data-testid="btn-forgot-password"
+                  className="w-full text-xs text-[#5C626A] hover:text-[#1A1D20] disabled:opacity-50"
+                >
+                  {resetBusy ? "Enviando…" : "¿Olvidaste tu contraseña?"}
+                </button>
+              )}
 
               <button
                 type="button"
