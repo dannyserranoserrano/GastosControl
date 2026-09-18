@@ -25,9 +25,9 @@ function traducir(msg) {
     return "Por seguridad, vuelve a iniciar sesión e inténtalo de nuevo";
   }
   if (m.includes("rate limit") || m.includes("too many")) return "Demasiados intentos, espera un momento";
-  if (m.includes("captcha")) {
-    return "CAPTCHA no válido: revisa que la Site Key (frontend) y la Secret Key (Supabase) sean del mismo widget de Turnstile";
-  }
+  if (m.includes("no captcha_token")) return "El CAPTCHA no llegó al servidor. Vuelve a intentarlo.";
+  if (m.includes("invalid-input-response")) return "El CAPTCHA caducó o ya se usó. Resuélvelo de nuevo e inténtalo.";
+  if (m.includes("captcha")) return "Verificación de seguridad fallida. Inténtalo de nuevo.";
   return msg || "No se pudo completar la operación";
 }
 
