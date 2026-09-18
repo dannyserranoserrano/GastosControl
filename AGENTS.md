@@ -123,6 +123,7 @@ GastosApp/
         │   ├── useRecurring.js  (genera gastos recurrentes pendientes al montar)
         │   ├── useNotifications.jsx (hook + modal de notificaciones proactivas)
         │   ├── useSyncStatus.js (estado real de datos: nube/servidor/local/offline)
+        │   ├── receipts.js      (resuelve imágenes: URL firmada de Supabase, data-URL o backend OCR)
         │   ├── localBackend.js  (implementación local de las rutas sobre IndexedDB)
         │   ├── storage.js       (wrapper de IndexedDB)
         │   ├── supabase.js      (cliente Supabase / isConfigured)
@@ -136,6 +137,7 @@ GastosApp/
         │   ├── ExpenseForm.jsx
         │   ├── CategoryManager.jsx
         │   ├── CategoryBadge.jsx
+        │   ├── ReceiptImage.jsx (imagen de ticket con src resuelto/async)
         │   ├── AutoRulesManager.jsx
         │   ├── BackupManager.jsx
         │   ├── CsvImportDialog.jsx
@@ -252,7 +254,7 @@ uvicorn server:app --reload
 - **Ajustes** (`Settings.jsx`, ruta `/ajustes`): página única con pestañas (por `?tab=`) — **Proyecto** (`ProjectSettings.jsx`), **Presupuesto** (`BudgetSettings.jsx`: importe, periodo y umbral), **Categorías** (`CategoryManager`: alta/baja de categorías y **topes por categoría**), **Ahorro** (`GoalsManager`), **Notificaciones** (`NotificationSettingsPanel` con `useNotificationPrefs`), **Alertas** (`MobileAlertSettings.jsx`) y **Datos** (`BackupManager`). `/presupuesto` redirige a `/ajustes?tab=presupuesto`.
 - **PWA instalable** (`InstallPrompt.jsx` + `vite-plugin-pwa`): service worker con precache (offline), manifest con iconos 192/512 + maskable y **iconos iOS** multi-tamaño (`apple-touch-icon-120/152/167/180.png`, sin transparencia). `InstallPrompt` captura `beforeinstallprompt` y muestra un banner **Instalar** (Android/escritorio); en iOS muestra las instrucciones de Safari (Compartir → Añadir a pantalla de inicio), avisando de que Chrome/Firefox en iPhone no lo permiten. El build **no usa `manualChunks`** (un chunk circular `vendor↔react` rompía la app en producción).
 - **Despliegue**: plantillas sin secretos en `deploy/` (vhosts Apache con `FallbackResource` + `Alias /icons/`, unidad systemd del OCR y script DuckDNS) y guía en `deploy/README.md`. `deploy/deploy.sh` compila con `VITE_BACKEND_URL=https://$DOMAIN` y publica `dist/` en `$WEB_ROOT` (solo pide `sudo` para copiar); ver también `DEPLOY_HOME.md`.
-- **Seguridad**: el vhost `:80` redirige todo a HTTPS y el `:443` envía cabeceras (`HSTS`, `CSP`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`). Bucket `receipts` sin listado anónimo y con operaciones limitadas a `receipts/<user_id>/` (ver `supabase/fix_receipts_policies.sql`). El backend OCR limita tamaño (`MAX_UPLOAD_BYTES`), tipo de imagen, rate limit por IP (`OCR_RATE_LIMIT`) y admite clave opcional (`APP_API_KEY` / `VITE_OCR_KEY`); `/api/files` rechaza rutas inseguras. Las exportaciones CSV sanean fórmulas (`csvSafe`/`_csv_safe`). Al cerrar sesión se limpia el almacenamiento local.
+- **Seguridad**: el vhost `:80` redirige todo a HTTPS y el `:443` envía cabeceras (`HSTS`, `CSP`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`). Bucket `receipts` **privado** y sin listado anónimo, con operaciones limitadas a `receipts/<user_id>/` (`supabase/fix_receipts_policies.sql` + `supabase/private_receipts.sql`); `ReceiptImage`/`receipts.js` resuelven las imágenes con `createSignedUrl` (1 h), compatibles con URLs públicas antiguas. Backend OCR: `MAX_UPLOAD_BYTES`, validación de imagen, `OCR_RATE_LIMIT` y clave `APP_API_KEY`/`VITE_OCR_KEY`; `/api/files` rechaza rutas inseguras. Exportaciones CSV saneadas (`csvSafe`/`_csv_safe`). Logout limpia el almacenamiento local. Plantillas fail2ban y checklist de Supabase Auth en `deploy/`.
 - **Copia de seguridad** (`backup.js` + `BackupManager.jsx`): en `/presupuesto`, exporta/importa en JSON los datos locales (IndexedDB `gastocontrol:categories|project_categories|expenses|budget` y claves `localStorage` de proyectos, objetivos, recurrentes, reglas y preferencias). La restauración reemplaza los datos locales y recarga la app; con sesión Supabase solo afecta al almacenamiento local del dispositivo.
 - **Exportar informe a PDF**: botón «PDF» en `/informe` que usa `window.print()`. Al imprimir quita temporalmente la clase `.dark` (tema claro), añade `body.printing-report` y el CSS de `@media print` en `index.css` deja visible solo `#print-area` (con `.no-print` oculto).
 - **Previsión de recurrentes** (`RecurringForecast.jsx`): tarjeta en el Panel con las plantillas recurrentes activas (del proyecto activo o todas), total mensual, importe ya registrado vs pendiente y estado por plantilla (`Registrado`/`Pendiente`/`Vencido`). Se recarga al cambiar de proyecto o al actualizarse los gastos.

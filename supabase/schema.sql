@@ -85,12 +85,12 @@ create policy "own budget" on public.budget
 -- Storage para imágenes de tickets (opcional)
 -- =====================================================================
 
--- El bucket sigue siendo público para servir las URLs ya guardadas (getPublicUrl),
--- pero SIN listado anónimo y con las operaciones limitadas a la carpeta del usuario
--- (`receipts/<user_id>/...`, que es la ruta que usa la app).
+-- Bucket PRIVADO: los tickets no son accesibles por URL pública. El frontend los
+-- muestra con `createSignedUrl` (válidas 1 h, ver `frontend/src/lib/receipts.js`).
+-- Las operaciones están limitadas a la carpeta del usuario (`receipts/<user_id>/...`).
 insert into storage.buckets (id, name, public)
-values ('receipts', 'receipts', true)
-on conflict (id) do nothing;
+values ('receipts', 'receipts', false)
+on conflict (id) do update set public = false;
 
 drop policy if exists "receipts public read" on storage.objects;
 drop policy if exists "receipts authenticated insert" on storage.objects;

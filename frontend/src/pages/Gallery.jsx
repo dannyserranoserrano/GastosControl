@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, eur, toBackendUrl } from "../lib/api";
+import { api, eur } from "../lib/api";
+import { resolveReceiptSrc } from "../lib/receipts";
+import ReceiptImage from "../components/ReceiptImage";
 import { useCategories } from "../lib/categoriesContext";
 import { useProjects } from "../lib/projectsContext";
 import { Card } from "../components/ui/card";
@@ -30,10 +32,6 @@ function receiptsOf(e) {
   if (Array.isArray(e?.receipts) && e.receipts.length) return e.receipts;
   if (e?.receipt_path) return [{ path: e.receipt_path, url: e.receipt_url || e.receipt_path }];
   return [];
-}
-
-function srcOf(r) {
-  return toBackendUrl(r.url || r.path);
 }
 
 async function downloadImage(src, filename) {
@@ -114,9 +112,13 @@ export default function Gallery() {
     setZoomed(false);
   };
 
-  const onDownload = (e) => {
+  const onDownload = async (e) => {
     const rs = receiptsOf(e);
-    const src = srcOf(rs[0]);
+    const src = await resolveReceiptSrc(rs[0]);
+    if (!src) {
+      toast.error("No se pudo obtener la imagen");
+      return;
+    }
     const filename = `ticket-${slug(e.vendor)}-${e.date || ""}.${extOf(src)}`;
     downloadImage(src, filename);
     toast.success("Descargando…");
@@ -189,8 +191,8 @@ export default function Gallery() {
               className="text-left rounded-2xl border border-[#E2DDD3] bg-white overflow-hidden hover:shadow-md transition-shadow"
             >
               <div className="aspect-[4/3] bg-[#F2EFE9] relative">
-                <img
-                  src={srcOf(rs[0])}
+                <ReceiptImage
+                  receipt={rs[0]}
                   alt="ticket"
                   loading="lazy"
                   className="w-full h-full object-cover"
@@ -239,9 +241,9 @@ export default function Gallery() {
                     key={i}
                     className="relative rounded-xl overflow-hidden border border-[#E2DDD3] bg-[#F2EFE9]"
                   >
-                    <img
+                    <ReceiptImage
+                      receipt={r}
                       data-testid={i === 0 ? "gallery-preview" : `gallery-preview-${i}`}
-                      src={srcOf(r)}
                       alt={`ticket ${i + 1}`}
                       className={`w-full ${zoomed ? "max-h-none" : "max-h-[70vh] object-contain"} cursor-zoom-in`}
                       onClick={() => setZoomed((z) => !z)}

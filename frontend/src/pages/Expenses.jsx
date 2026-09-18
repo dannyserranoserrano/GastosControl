@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { api, eur, toBackendUrl, exportCsv, budgetCrossing, verifyExpenseSaved } from "../lib/api";
+import { api, eur, exportCsv, budgetCrossing, verifyExpenseSaved } from "../lib/api";
 import { findDuplicates } from "../lib/findDuplicates";
 import { useCategories } from "../lib/categoriesContext";
 import { Card } from "../components/ui/card";
@@ -9,6 +9,7 @@ import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import CategoryBadge from "../components/CategoryBadge";
+import ReceiptImage from "../components/ReceiptImage";
 import ExpenseForm from "../components/ExpenseForm";
 import AutoRulesManager from "../components/AutoRulesManager";
 import CsvImportDialog from "../components/CsvImportDialog";
@@ -441,7 +442,7 @@ export default function Expenses() {
               const firstReceipt = receiptList[0];
               const openPreview = () => {
                 if (receiptList.length) {
-                  setPreviewImages(receiptList.map((r) => toBackendUrl(r.url || r.path)));
+                  setPreviewImages(receiptList);
                 }
               };
               return (
@@ -459,8 +460,8 @@ export default function Expenses() {
                   title={receiptList.length ? `Ver ticket(s) (${receiptList.length})` : "Sin imagen"}
                 >
                   {firstReceipt ? (
-                    <img
-                      src={toBackendUrl(firstReceipt.url || firstReceipt.path)}
+                    <ReceiptImage
+                      receipt={firstReceipt}
                       alt="ticket"
                       className="w-full h-full object-cover"
                     />
@@ -589,10 +590,10 @@ export default function Expenses() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 max-h-[75vh] overflow-auto">
-            {previewImages.map((src, i) => (
-              <img
+            {previewImages.map((r, i) => (
+              <ReceiptImage
                 key={i}
-                src={src}
+                receipt={r}
                 alt={`ticket ${i + 1}`}
                 className="w-full object-contain rounded-xl border border-[#E2DDD3]"
               />

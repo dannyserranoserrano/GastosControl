@@ -5,7 +5,8 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useCategories } from "../lib/categoriesContext";
-import { api, toBackendUrl } from "../lib/api";
+import { api } from "../lib/api";
+import ReceiptImage from "./ReceiptImage";
 import { fileToDataUrl } from "../lib/localBackend";
 import { loadRules, suggestFor } from "../lib/autoRules";
 import { Sparkles, Plus } from "lucide-react";
@@ -199,8 +200,8 @@ export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar"
               key={i}
               className="relative w-16 h-16 rounded-lg border border-[#E2DDD3] overflow-hidden bg-[#F2EFE9]"
             >
-              <img
-                src={toBackendUrl(r.url || r.path)}
+              <ReceiptImage
+                receipt={r}
                 alt="ticket"
                 className="w-full h-full object-cover"
               />

@@ -124,8 +124,9 @@ export async function uploadReceiptToStorage(userId, dataUrl) {
       .from("receipts")
       .upload(path, blob, { upsert: false, contentType: blob.type });
     if (error) throw error;
-    const { data } = supabase.storage.from("receipts").getPublicUrl(path);
-    return data.publicUrl;
+    // Bucket privado: se guarda la ruta de storage y se sirve con URL firmada
+    // (ver resolveReceiptSrc en lib/receipts.js).
+    return path;
   } catch {
     return dataUrl;
   }

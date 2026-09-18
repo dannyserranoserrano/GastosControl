@@ -84,12 +84,24 @@ sudo /usr/local/bin/duckdns-update.sh
   ```bash
   ./deploy/install-apache.sh [DOMINIO] [PUERTO_OCR]
   ```
-- **Supabase**: ejecuta `supabase/fix_receipts_policies.sql` en el SQL Editor para
-  quitar el listado anónimo del bucket `receipts` y limitar la subida a la carpeta
-  del usuario.
-- **Backend OCR** (`backend/.env`): opcionalmente define `APP_API_KEY` (y
-  `VITE_OCR_KEY` en el frontend) para exigir cabecera en `/api/receipts/scan`, y
-  ajusta `MAX_UPLOAD_BYTES` / `OCR_RATE_LIMIT`.
+- **Supabase**: ejecuta en el SQL Editor, en este orden:
+  `supabase/fix_receipts_policies.sql` (sin listado anónimo, operaciones por carpeta
+  de usuario) y `supabase/private_receipts.sql` (bucket privado; el frontend usa URLs
+  firmadas).
+- **Backend OCR** (`backend/.env`): define `APP_API_KEY` y el mismo valor en
+  `frontend/.env` como `VITE_OCR_KEY` (el frontend lo envía en `X-App-Key`). Ajusta
+  `MAX_UPLOAD_BYTES` / `OCR_RATE_LIMIT`.
+- **fail2ban** (bloquea IPs que abusan del OCR):
+  ```bash
+  sudo install -m 0644 deploy/fail2ban-gastoscontrol-filter.conf /etc/fail2ban/filter.d/gastoscontrol-ocr.conf
+  sudo install -m 0644 deploy/fail2ban-gastoscontrol-jail.conf /etc/fail2ban/jail.d/gastoscontrol.conf
+  sudo systemctl restart fail2ban
+  sudo fail2ban-client status gastoscontrol-ocr
+  ```
+- **Supabase Auth** (dashboard → Authentication): revisa que el registro sea el
+  deseado, activa la **confirmación por email**, añade **CAPTCHA** si el registro es
+  abierto y deshabilita los proveedores que no uses. En *URL Configuration* deja solo
+  los orígenes de confianza (`https://__DOMAIN__/**`).
 
 ## 7) Comprobaciones
 ```bash

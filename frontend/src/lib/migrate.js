@@ -63,9 +63,9 @@ export async function importLocalToCloud(userId) {
     let receipt_path = e.receipt_path || null;
     let receipt_url = e.receipt_url || null;
     if (receipt_path && receipt_path.startsWith("data:")) {
-      const publicUrl = await uploadReceiptToStorage(userId, receipt_path);
-      receipt_path = publicUrl;
-      receipt_url = publicUrl;
+      const storedPath = await uploadReceiptToStorage(userId, receipt_path);
+      receipt_path = storedPath;
+      receipt_url = storedPath;
     }
 
     expenseRows.push({
