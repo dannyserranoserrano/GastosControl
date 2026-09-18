@@ -14,10 +14,13 @@ const AuthCtx = createContext({
   isConfigured: false,
   pendingMigration: null,
   migrating: false,
+  passwordRecovery: false,
   signIn: async () => {},
   signOut: async () => {},
   signInWithPassword: async () => {},
   signUpWithPassword: async () => {},
+  updatePassword: async () => {},
+  sendPasswordReset: async () => {},
   runMigration: async () => {},
   dismissMigration: async () => {},
 });
@@ -27,6 +30,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [pendingMigration, setPendingMigration] = useState(null);
   const [migrating, setMigrating] = useState(false);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   useEffect(() => {
     if (!isConfigured || !supabase) {
@@ -45,8 +49,9 @@ export function AuthProvider({ children }) {
         if (mounted) setLoading(false);
       });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+      if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
     });
 
     return () => {
@@ -107,6 +112,21 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
+  const updatePassword = useCallback(async (password) => {
+    if (!supabase) throw new Error("Supabase no configurado");
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+    setPasswordRecovery(false);
+  }, []);
+
+  const sendPasswordReset = useCallback(async (email) => {
+    if (!supabase) throw new Error("Supabase no configurado");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    if (error) throw error;
+  }, []);
+
   const signOut = useCallback(async () => {
     try {
       if (supabase) await supabase.auth.signOut();
@@ -147,10 +167,13 @@ export function AuthProvider({ children }) {
         isConfigured,
         pendingMigration,
         migrating,
+        passwordRecovery,
         signIn,
         signOut,
         signInWithPassword,
         signUpWithPassword,
+        updatePassword,
+        sendPasswordReset,
         runMigration,
         dismissMigration,
       }}

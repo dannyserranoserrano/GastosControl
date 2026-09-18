@@ -81,6 +81,7 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Topes por categoría movidos a Ajustes → Categorías
 - [x] Botones de cabecera con scroll horizontal en móvil (Gastos e Informe)
 - [x] Logout con limpieza total del almacenamiento local del dispositivo (sin dejar rastro)
+- [x] Gestión de cuenta: cambiar contraseña y enlace de recuperación (email/contraseña) o ajustes del proveedor (Google/GitHub)
 
 ## Seguridad (2026-09)
 - [x] HTTPS obligatorio: el vhost `:80` redirige (301) y `:443` envía HSTS

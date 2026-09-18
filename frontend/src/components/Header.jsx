@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import {
   Home, Receipt, ScanLine, Compass, LogIn, LogOut, Images, BarChart3,
@@ -10,6 +10,7 @@ import { useProjects } from "@/lib/projectsContext";
 import { useSyncStatus, TONES } from "@/lib/useSyncStatus";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
+import AccountDialog from "@/components/AccountDialog";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
@@ -90,33 +91,46 @@ function ProjectPill({ activeProject, className = "" }) {
 }
 
 export default function Header() {
-  const { user, isConfigured, signOut, loading } = useAuth();
+  const { user, isConfigured, signOut, loading, passwordRecovery } = useAuth();
   const { activeProject } = useProjects();
   const sync = useSyncStatus();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   const closeMobile = () => setMobileOpen(false);
+
+  useEffect(() => {
+    if (passwordRecovery) setAccountOpen(true);
+  }, [passwordRecovery]);
 
   const authBlock = (
     <>
       {isConfigured &&
         (loading ? null : user ? (
           <div className="flex items-center gap-2">
-            {user.user_metadata?.avatar_url ? (
-              <img
-                src={user.user_metadata.avatar_url}
-                alt="avatar"
-                className="w-7 h-7 rounded-full object-cover"
-              />
-            ) : (
-              <span className="w-7 h-7 rounded-full bg-[#1E293B] text-white flex items-center justify-center text-xs font-semibold">
-                {(user.email?.[0] || "U").toUpperCase()}
+            <button
+              type="button"
+              onClick={() => setAccountOpen(true)}
+              data-testid="btn-account"
+              title="Mi cuenta"
+              className="flex items-center gap-2 rounded-full pl-0.5 pr-1 py-0.5 hover:bg-[#F2EFE9] transition-colors"
+            >
+              {user.user_metadata?.avatar_url ? (
+                <img
+                  src={user.user_metadata.avatar_url}
+                  alt="avatar"
+                  className="w-7 h-7 rounded-full object-cover"
+                />
+              ) : (
+                <span className="w-7 h-7 rounded-full bg-[#1E293B] text-white flex items-center justify-center text-xs font-semibold">
+                  {(user.email?.[0] || "U").toUpperCase()}
+                </span>
+              )}
+              <span className="hidden sm:block text-sm text-[#1A1D20] max-w-[120px] truncate">
+                {user.user_metadata?.name || user.email}
               </span>
-            )}
-            <span className="hidden sm:block text-sm text-[#1A1D20] max-w-[120px] truncate">
-              {user.user_metadata?.name || user.email}
-            </span>
+            </button>
             <Button
               variant="outline"
               size="sm"
@@ -320,6 +334,8 @@ export default function Header() {
           </div>
         </div>
       )}
+
+      <AccountDialog open={accountOpen} onOpenChange={setAccountOpen} />
     </>
   );
 }
