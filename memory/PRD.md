@@ -82,5 +82,20 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Botones de cabecera con scroll horizontal en móvil (Gastos e Informe)
 - [x] Logout con limpieza total del almacenamiento local del dispositivo (sin dejar rastro)
 
+## Seguridad (2026-09)
+- [x] HTTPS obligatorio: el vhost `:80` redirige (301) y `:443` envía HSTS
+- [x] Cabeceras de seguridad: CSP (Supabase, Google Fonts, Telegram, EmailJS, Turnstile), X-Frame-Options, X-Content-Type-Options, Referrer-Policy y Permissions-Policy
+- [x] Supabase RLS verificado: sin sesión, `expenses`/`budget`/`categories` devuelven vacío
+- [x] Bucket `receipts`: sin listado anónimo, **privado** y servido con URLs firmadas (`ReceiptImage`/`receipts.js`)
+- [x] Backend OCR: límite de tamaño (`MAX_UPLOAD_BYTES`), validación de tipo de imagen, rate limit por IP (`OCR_RATE_LIMIT`) y clave `APP_API_KEY`/`X-App-Key`
+- [x] `/api/files` protegido (clave/rate limit) y rechazo de rutas inseguras
+- [x] Exportaciones CSV saneadas contra inyección de fórmulas
+- [x] `yarn audit` sin vulnerabilidades (react-router-dom, postcss, plugin-kit actualizados)
+- [x] fail2ban para abusar del OCR (401/413/429 en `/api/receipts/scan` y `/api/files`)
+- [x] CAPTCHA opcional con Cloudflare Turnstile en login/registro (`VITE_TURNSTILE_SITE_KEY`)
+- [x] Supabase Auth: confirmación de email activa y validación con CAPTCHA
+- [x] Sin secretos en repo ni en el bundle; sin source maps; el SPA fallback no filtra archivos
+- [x] Scripts de despliegue `deploy/deploy.sh` (frontend) y `deploy/install-apache.sh` (vhosts)
+
 ## Backlog
 - (vacío)
