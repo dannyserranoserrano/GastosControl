@@ -2,6 +2,14 @@ export function stripBom(text) {
   return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
 }
 
+// Evita inyección de fórmulas al abrir un CSV exportado en Excel/LibreOffice.
+const CSV_FORMULA_PREFIX = ["=", "+", "-", "@", "\t", "\r"];
+
+export function csvSafe(value) {
+  const s = String(value ?? "");
+  return s && CSV_FORMULA_PREFIX.includes(s[0]) ? `'${s}` : s;
+}
+
 export function detectDelimiter(text) {
   const firstLine = text.split(/\r?\n/)[0] || "";
   const counts = [

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Query, Response
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Query, Response, Request
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -8,9 +8,11 @@ import io
 import csv
 import re
 import json
+import time
 import base64
 import logging
 import requests
+from collections import deque
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
@@ -49,10 +51,73 @@ GEMINI_MODEL = (os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash").strip()
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 APP_NAME = "gastocontrol"
 
+# --- Endurecimiento de la API ---
+# Tamaño máximo de subida para el OCR (protege memoria/cuota).
+MAX_UPLOAD_BYTES = int((os.environ.get("MAX_UPLOAD_BYTES") or str(8 * 1024 * 1024)).strip())
+# Clave opcional: si se define APP_API_KEY, los endpoints de OCR/ficheros exigen la
+# cabecera `X-App-Key`. Vacío = abierto (comportamiento actual).
+APP_API_KEY = (os.environ.get("APP_API_KEY") or "").strip()
+# Límite de peticiones por minuto y por IP en /receipts/scan y /files (0 = desactivado).
+OCR_RATE_LIMIT = int((os.environ.get("OCR_RATE_LIMIT") or "30").strip())
+ALLOWED_IMAGE_EXTS = {"jpg", "jpeg", "png", "webp", "heic", "heif"}
+
 storage_key = None
+
+_hits: dict = {}
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+
+def _client_ip(request: Request) -> str:
+    # Apache actúa de proxy en 127.0.0.1; confiamos en X-Forwarded-For solo como
+    # pista (no para seguridad), y usamos la IP de la conexión como clave.
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def _rate_limit(request: Request):
+    if OCR_RATE_LIMIT <= 0:
+        return
+    ip = _client_ip(request)
+    now = time.time()
+    dq = _hits.get(ip)
+    if dq is None:
+        dq = deque()
+        _hits[ip] = dq
+    while dq and now - dq[0] > 60:
+        dq.popleft()
+    if len(dq) >= OCR_RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Demasiadas peticiones; inténtalo en un minuto")
+    dq.append(now)
+    # Evita crecimiento ilimitado del mapa en un ataque distribuido.
+    if len(_hits) > 5000:
+        for k in [k for k, v in _hits.items() if not v][:1000]:
+            _hits.pop(k, None)
+
+
+def _require_api_key(request: Request):
+    if not APP_API_KEY:
+        return
+    if request.headers.get("x-app-key") != APP_API_KEY:
+        raise HTTPException(status_code=401, detail="No autorizado")
+
+
+def _reject_bad_path(path: str):
+    if not path or path.startswith("/") or ".." in path or "\x00" in path:
+        raise HTTPException(status_code=400, detail="Ruta no válida")
+
+
+CSV_FORMULA_PREFIX = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_safe(value) -> str:
+    """Evita inyección de fórmulas al abrir el CSV en Excel/LibreOffice."""
+    s = str(value if value is not None else "")
+    if s and s[0] in CSV_FORMULA_PREFIX:
+        return "'" + s
+    return s
 
 
 def init_storage(force: bool = False):
@@ -449,8 +514,14 @@ async def export_expenses():
     writer = csv.writer(buf, delimiter=";")
     writer.writerow(["Fecha", "Proveedor", "Categoría", "Proyecto / Obra", "Importe (€)", "Notas"])
     for d in docs:
-        writer.writerow([d.get("date", ""), d.get("vendor", ""), d.get("category", ""), d.get("project", ""),
-                         f"{float(d.get('amount', 0)):.2f}", d.get("notes", "")])
+        writer.writerow([
+            _csv_safe(d.get("date", "")),
+            _csv_safe(d.get("vendor", "")),
+            _csv_safe(d.get("category", "")),
+            _csv_safe(d.get("project", "")),
+            f"{float(d.get('amount', 0)):.2f}",
+            _csv_safe(d.get("notes", "")),
+        ])
     csv_bytes = buf.getvalue().encode("utf-8-sig")
     return Response(
         content=csv_bytes,
@@ -671,12 +742,26 @@ async def _extract_with_gemini(data: bytes, ctype: str, extracted: dict) -> dict
 
 
 @api_router.post("/receipts/scan")
-async def scan_receipt(file: UploadFile = File(...)):
-    data = await file.read()
+async def scan_receipt(request: Request, file: UploadFile = File(...)):
+    _require_api_key(request)
+    _rate_limit(request)
+
+    filename = file.filename or "receipt.jpg"
+    ext_guess = (filename.split(".")[-1].lower() if "." in filename else "")
+    looks_image = (file.content_type or "").startswith("image/") or ext_guess in ALLOWED_IMAGE_EXTS
+    if not looks_image:
+        raise HTTPException(status_code=415, detail="Formato no admitido: sube una imagen (JPG, PNG, WEBP)")
+
+    data = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(data) == 0:
         raise HTTPException(status_code=400, detail="Empty file")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Imagen demasiado grande (máx {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)",
+        )
 
-    ext, ctype = _guess_ext_and_ctype(file.filename or "receipt.jpg", file.content_type)
+    ext, ctype = _guess_ext_and_ctype(filename, file.content_type)
 
     # Upload to storage
     path = f"{APP_NAME}/receipts/{uuid.uuid4()}.{ext}"
@@ -741,7 +826,10 @@ async def scan_receipt(file: UploadFile = File(...)):
 
 
 @api_router.get("/files/{path:path}")
-async def download_file(path: str):
+async def download_file(request: Request, path: str):
+    _require_api_key(request)
+    _rate_limit(request)
+    _reject_bad_path(path)
     record = None
     if _mongo_client is not None:
         record = await db.files.find_one({"storage_path": path, "is_deleted": False})

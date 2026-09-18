@@ -75,11 +75,30 @@ sudo /usr/local/bin/duckdns-update.sh
 ( sudo crontab -l 2>/dev/null; echo '*/5 * * * * /usr/local/bin/duckdns-update.sh >> /var/log/duckdns-gastos.log 2>&1' ) | sudo crontab -
 ```
 
-## 6) Comprobaciones
+## 6) Endurecimiento (recomendado)
+- El vhost `:80` (`apache-gastoscontrol.conf`) redirige a HTTPS; el `:443`
+  (`apache-gastoscontrol-le-ssl.conf`) añade `HSTS`, `CSP`, `X-Frame-Options`,
+  `X-Content-Type-Options`, `Referrer-Policy` y `Permissions-Policy`. Aplica los
+  vhosts y recarga:
+  ```bash
+  sudo install -m 0644 deploy/apache-gastoscontrol.conf /etc/apache2/sites-available/gastoscontrol.conf
+  sudo install -m 0644 deploy/apache-gastoscontrol-le-ssl.conf /etc/apache2/sites-available/gastoscontrol-le-ssl.conf
+  sudo apache2ctl configtest && sudo systemctl reload apache2
+  ```
+- **Supabase**: ejecuta `supabase/fix_receipts_policies.sql` en el SQL Editor para
+  quitar el listado anónimo del bucket `receipts` y limitar la subida a la carpeta
+  del usuario.
+- **Backend OCR** (`backend/.env`): opcionalmente define `APP_API_KEY` (y
+  `VITE_OCR_KEY` en el frontend) para exigir cabecera en `/api/receipts/scan`, y
+  ajusta `MAX_UPLOAD_BYTES` / `OCR_RATE_LIMIT`.
+
+## 7) Comprobaciones
 ```bash
 curl -I https://__DOMAIN__/
 curl -I https://__DOMAIN__/gastos
 curl -s https://__DOMAIN__/api/
+# El puerto 80 debe redirigir:
+curl -I http://__DOMAIN__/
 ```
 
 ## Supabase

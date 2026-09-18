@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, eur } from "../lib/api";
+import { csvSafe } from "../lib/csv";
 import { useProjects } from "../lib/projectsContext";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -217,12 +218,12 @@ export default function MonthlyReport() {
       .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
       .forEach((e) => {
         const row = [
-          e.date || "",
-          e.vendor || "",
-          e.category || "",
-          e.project || "",
+          csvSafe(e.date || ""),
+          csvSafe(e.vendor || ""),
+          csvSafe(e.category || ""),
+          csvSafe(e.project || ""),
           Number(e.amount || 0).toFixed(2),
-          e.notes || "",
+          csvSafe(e.notes || ""),
         ];
         lines.push(row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";"));
       });

@@ -26,16 +26,16 @@ async function pickBackend() {
 // El escaneo de tickets siempre usa el backend OCR (FastAPI) cuando está configurado.
 // Los datos (gastos/presupuesto) van a Supabase si hay sesión, o al modo local si no.
 export async function scanReceipt(formData) {
+  const headers = { "Content-Type": "multipart/form-data" };
+  // Cabecera opcional si el backend exige APP_API_KEY (ver backend/.env).
+  const ocrKey = import.meta.env.VITE_OCR_KEY;
+  if (ocrKey) headers["X-App-Key"] = ocrKey;
   if (remoteApi) {
-    const { data } = await remoteApi.post("/receipts/scan", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    const { data } = await remoteApi.post("/receipts/scan", formData, { headers });
     return data;
   }
   const backend = await pickBackend();
-  const { data } = await backend.post("/receipts/scan", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const { data } = await backend.post("/receipts/scan", formData, { headers });
   return data;
 }
 

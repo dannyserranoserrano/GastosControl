@@ -85,14 +85,36 @@ create policy "own budget" on public.budget
 -- Storage para imágenes de tickets (opcional)
 -- =====================================================================
 
+-- El bucket sigue siendo público para servir las URLs ya guardadas (getPublicUrl),
+-- pero SIN listado anónimo y con las operaciones limitadas a la carpeta del usuario
+-- (`receipts/<user_id>/...`, que es la ruta que usa la app).
 insert into storage.buckets (id, name, public)
 values ('receipts', 'receipts', true)
 on conflict (id) do nothing;
 
 drop policy if exists "receipts public read" on storage.objects;
-create policy "receipts public read" on storage.objects
-  for select using (bucket_id = 'receipts');
-
 drop policy if exists "receipts authenticated insert" on storage.objects;
-create policy "receipts authenticated insert" on storage.objects
-  for insert to authenticated with check (bucket_id = 'receipts');
+drop policy if exists "receipts own read" on storage.objects;
+drop policy if exists "receipts own insert" on storage.objects;
+drop policy if exists "receipts own update" on storage.objects;
+drop policy if exists "receipts own delete" on storage.objects;
+
+create policy "receipts own read" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'receipts' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "receipts own insert" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'receipts' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "receipts own update" on storage.objects
+  for update to authenticated
+  using (bucket_id = 'receipts' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "receipts own delete" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'receipts' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Opción más estricta (recomendada a futuro): bucket privado + createSignedUrl en el
+-- frontend en lugar de getPublicUrl. Entonces: update storage.buckets set public=false
+-- where id='receipts'; e igualmente las políticas de arriba.

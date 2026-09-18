@@ -2,6 +2,8 @@ import { dbGet, dbSet, dbClear } from "./storage";
 
 export const BACKUP_VERSION = 1;
 
+// Nota: NO incluir aquí claves con secretos (p. ej. `gastocontrol:mobile_notify`,
+// que guarda el token de Telegram y las claves de EmailJS) para no filtrarlos en el backup.
 const LS_KEYS = [
   "gastocontrol:projects",
   "gastocontrol:active_project",

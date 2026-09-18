@@ -1,6 +1,7 @@
 import { DEFAULT_CATEGORIES } from "./constants";
 import { dbGet, dbSet } from "./storage";
 import { normalizePeriod, periodRange } from "./period";
+import { csvSafe } from "./csv";
 
 const K = {
   categories: "gastocontrol:categories",
@@ -512,12 +513,12 @@ export async function downloadCsv(list) {
   const lines = ['"Fecha";"Proveedor";"Categoría";"Proyecto / Obra";"Importe (€)";"Notas"'];
   sorted.forEach((e) => {
     const row = [
-      e.date || "",
-      e.vendor || "",
-      e.category || "",
-      e.project || "",
+      csvSafe(e.date || ""),
+      csvSafe(e.vendor || ""),
+      csvSafe(e.category || ""),
+      csvSafe(e.project || ""),
       round2(e.amount).toFixed(2),
-      e.notes || "",
+      csvSafe(e.notes || ""),
     ];
     lines.push(row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";"));
   });
