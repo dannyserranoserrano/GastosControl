@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { api, ALLOWED_ICONS, ALLOWED_COLORS, COLOR_MAP } from "../lib/api";
+import { useEffect, useState } from "react";
+import { api, eur, ALLOWED_ICONS, ALLOWED_COLORS, COLOR_MAP } from "../lib/api";
 import { ICONS, iconFor } from "../lib/icons";
 import { useCategories } from "../lib/categoriesContext";
 import { useProjects } from "../lib/projectsContext";
@@ -7,9 +7,20 @@ import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { Progress } from "./ui/progress";
+import CategoryBadge from "./CategoryBadge";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
-import { Trash2, Plus, Tag } from "lucide-react";
+import { Trash2, Plus, Tag, Save } from "lucide-react";
+
+function buildCatBudgets(raw) {
+  const out = {};
+  for (const [name, value] of Object.entries(raw || {})) {
+    const n = Number(value);
+    if (Number.isFinite(n) && n > 0) out[name] = n;
+  }
+  return out;
+}
 
 export default function CategoryManager() {
   const { categories, reload } = useCategories();
@@ -18,6 +29,56 @@ export default function CategoryManager() {
   const [icon, setIcon] = useState("Package");
   const [color, setColor] = useState("cyan");
   const [saving, setSaving] = useState(false);
+  const [catBudgets, setCatBudgets] = useState({});
+  const [budgetMeta, setBudgetMeta] = useState({ total: 0, alert_at: 80, period: "monthly" });
+  const [spentByCat, setSpentByCat] = useState({});
+  const [savingBudgets, setSavingBudgets] = useState(false);
+
+  const loadBudget = async () => {
+    const params = activeProject ? { project: activeProject } : {};
+    const [b, s] = await Promise.all([
+      api.get("/budget", { params }),
+      api.get("/stats", { params }),
+    ]);
+    setBudgetMeta({
+      total: Number(b.data.total || 0),
+      alert_at: Number(b.data.alert_at) > 0 ? Number(b.data.alert_at) : 80,
+      period: b.data.period || "monthly",
+    });
+    const cb = {};
+    for (const [catName, value] of Object.entries(b.data.category_budgets || {})) {
+      cb[catName] = String(value || "");
+    }
+    setCatBudgets(cb);
+    const spent = {};
+    (s.data?.period_by_category || s.data?.by_category || []).forEach((c) => {
+      spent[c.category] = c.total;
+    });
+    setSpentByCat(spent);
+  };
+
+  useEffect(() => {
+    loadBudget();
+  }, [activeProject]); // eslint-disable-line
+
+  const saveBudgets = async () => {
+    setSavingBudgets(true);
+    try {
+      await api.put("/budget", {
+        total: budgetMeta.total,
+        alert_at: budgetMeta.alert_at,
+        period: budgetMeta.period,
+        category_budgets: buildCatBudgets(catBudgets),
+        project: activeProject,
+      });
+      toast.success("Topes por categoría actualizados");
+      loadBudget();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || err?.message || "Error al guardar");
+    } finally {
+      setSavingBudgets(false);
+    }
+  };
 
   const add = async (e) => {
     e.preventDefault();
@@ -52,6 +113,7 @@ export default function CategoryManager() {
   const previewCls = (COLOR_MAP[color] || COLOR_MAP.stone).cls;
 
   return (
+    <>
     <Card className="p-6 rounded-2xl border-[#E2DDD3] bg-white" data-testid="category-manager">
       <div className="flex items-center gap-2 mb-1">
         <Tag className="w-5 h-5 text-[#D95D39]" />
@@ -201,5 +263,81 @@ export default function CategoryManager() {
         </div>
       </form>
     </Card>
+
+    <Card className="p-6 rounded-2xl border-[#E2DDD3] bg-white mt-5" data-testid="category-budgets">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h3 className="font-heading font-bold text-lg">Topes por categoría</h3>
+          <p className="text-sm text-[#5C626A] mt-1">
+            {activeProject
+              ? `Tope de gasto de cada categoría en «${activeProject}».`
+              : "Tope de gasto de cada categoría (general)."}{" "}
+            Déjalo en 0 o vacío para no limitarla.
+          </p>
+        </div>
+        <Button
+          data-testid="btn-save-category-budgets"
+          onClick={saveBudgets}
+          disabled={savingBudgets}
+          className="bg-[#D95D39] hover:bg-[#C24C2A] text-white rounded-xl shrink-0"
+        >
+          <Save className="w-4 h-4 mr-2" /> Guardar topes
+        </Button>
+      </div>
+      <div className="mt-4 space-y-3">
+        {categories.length === 0 && (
+          <p className="text-sm text-[#5C626A]">No hay categorías todavía.</p>
+        )}
+        {categories.map((c) => {
+          const limit = Number(catBudgets[c.name] || 0);
+          const spent = spentByCat[c.name] || 0;
+          const pct = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+          const over = limit > 0 && spent > limit;
+          const warn = limit > 0 && !over && spent >= (limit * budgetMeta.alert_at) / 100;
+          return (
+            <div
+              key={c.name}
+              data-testid={`cat-budget-row-${c.name}`}
+              className="rounded-xl border border-[#E2DDD3] bg-[#FAF8F5] p-3 sm:p-4"
+            >
+              <div className="flex items-center gap-2 flex-wrap">
+                <CategoryBadge category={c.name} />
+                <div className="flex-1" />
+                <Input
+                  data-testid={`input-cat-budget-${c.name}`}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={catBudgets[c.name] ?? ""}
+                  onChange={(e) =>
+                    setCatBudgets((prev) => ({ ...prev, [c.name]: e.target.value }))
+                  }
+                  placeholder="Sin límite"
+                  className="w-28 rounded-xl"
+                />
+              </div>
+              {limit > 0 && (
+                <div className="mt-2">
+                  <Progress
+                    value={pct}
+                    indicatorClassName={over ? "bg-red-500" : warn ? "bg-amber-500" : ""}
+                    className="h-2"
+                  />
+                  <p
+                    className={`text-xs mt-1 font-mono ${
+                      over ? "text-red-700" : warn ? "text-amber-700" : "text-[#5C626A]"
+                    }`}
+                  >
+                    {eur(spent)} de {eur(limit)} · {((spent / limit) * 100).toFixed(1)}%
+                    {over ? " · Excedido" : warn ? " · Cerca del límite" : ""}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+    </>
   );
 }

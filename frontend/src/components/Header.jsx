@@ -2,9 +2,12 @@ import { useState } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import {
   Home, Receipt, ScanLine, Compass, LogIn, LogOut, Images, BarChart3,
-  CalendarDays, Settings, ChevronDown, Menu, X,
+  CalendarDays, Settings, ChevronDown, Menu, X, FolderKanban,
+  Cloud, CloudOff, Server, HardDrive,
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
+import { useProjects } from "@/lib/projectsContext";
+import { useSyncStatus, TONES } from "@/lib/useSyncStatus";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
 import {
@@ -52,8 +55,44 @@ const itemCls = (active) =>
       : "text-[#5C626A] hover:text-[#1A1D20] hover:bg-[#F2EFE9]"
   }`;
 
+const STATUS_ICON = { offline: CloudOff, cloud: Cloud, server: Server, local: HardDrive };
+
+function StatusPill({ status, className = "" }) {
+  const tone = TONES[status.tone] || TONES.slate;
+  const Icon = STATUS_ICON[status.key] || HardDrive;
+  return (
+    <div
+      className={`items-center gap-2 text-xs px-3 py-1.5 rounded-full border whitespace-nowrap ${tone.wrap} ${className}`}
+      title={status.title}
+    >
+      <Icon className="w-3.5 h-3.5" />
+      <span className="font-medium">{status.label}</span>
+    </div>
+  );
+}
+
+function ProjectPill({ activeProject, className = "" }) {
+  return (
+    <div
+      className={`items-center gap-2 text-xs px-3 py-1.5 rounded-full border border-[#E2DDD3] bg-white whitespace-nowrap ${className}`}
+      title={
+        activeProject
+          ? `Proyecto activo: ${activeProject}`
+          : "Sin proyecto activo: viendo todos los proyectos"
+      }
+    >
+      <FolderKanban className={`w-3.5 h-3.5 ${activeProject ? "text-[#D95D39]" : "text-[#5C626A]"}`} />
+      <span className={`font-medium truncate max-w-[140px] ${activeProject ? "text-[#1A1D20]" : "text-[#5C626A]"}`}>
+        {activeProject || "Todos los proyectos"}
+      </span>
+    </div>
+  );
+}
+
 export default function Header() {
   const { user, isConfigured, signOut, loading } = useAuth();
+  const { activeProject } = useProjects();
+  const sync = useSyncStatus();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -170,10 +209,8 @@ export default function Header() {
 
         {/* Acciones */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
-          <div className="hidden 2xl:flex items-center gap-2 text-xs px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Sincronizado
-          </div>
+          <ProjectPill activeProject={activeProject} className="hidden md:flex" />
+          <StatusPill status={sync} className="hidden xl:flex" />
 
           <Link to="/escanear" className="hidden sm:block">
             <Button
@@ -265,9 +302,20 @@ export default function Header() {
               )}
             </nav>
 
-            <div className="border-t border-[#E2DDD3] pt-3 flex items-center justify-between gap-2">
-              <ThemeToggle />
-              <div className="flex-1 flex justify-end">{authBlock}</div>
+            <div className="border-t border-[#E2DDD3] pt-3 space-y-3">
+              <div>
+                <p className="px-1 mb-2 text-[11px] font-mono uppercase tracking-widest text-[#5C626A]">
+                  Contexto
+                </p>
+                <div className="flex flex-col gap-2">
+                  <ProjectPill activeProject={activeProject} className="flex" />
+                  <StatusPill status={sync} className="flex" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <ThemeToggle />
+                <div className="flex-1 flex justify-end">{authBlock}</div>
+              </div>
             </div>
           </div>
         </div>

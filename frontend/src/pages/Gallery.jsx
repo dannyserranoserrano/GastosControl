@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, eur, toBackendUrl } from "../lib/api";
 import { useCategories } from "../lib/categoriesContext";
 import { useProjects } from "../lib/projectsContext";
@@ -68,6 +68,7 @@ export default function Gallery() {
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("all");
+  const [sort, setSort] = useState("date-desc");
   const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(null);
   const [zoomed, setZoomed] = useState(false);
@@ -95,6 +96,19 @@ export default function Gallery() {
     return () => clearTimeout(t);
   }, [category, q, activeProject]); // eslint-disable-line
 
+  const sortedItems = useMemo(() => {
+    const list = [...items];
+    const byDate = (a, b) => String(a.date || "").localeCompare(String(b.date || ""));
+    if (sort === "date-asc") list.sort(byDate);
+    else if (sort === "category-asc")
+      list.sort((a, b) => {
+        const ca = String(a.category || "Otros").localeCompare(String(b.category || "Otros"));
+        return ca !== 0 ? ca : byDate(b, a);
+      });
+    else list.sort((a, b) => byDate(b, a));
+    return list;
+  }, [items, sort]);
+
   const open = (e) => {
     setActive(e);
     setZoomed(false);
@@ -121,7 +135,7 @@ export default function Gallery() {
       </div>
 
       <Card className="p-4 sm:p-5 rounded-2xl border-[#E2DDD3] bg-white">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="sm:col-span-2 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5C626A]" />
             <Input
@@ -143,6 +157,16 @@ export default function Gallery() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={sort} onValueChange={setSort}>
+            <SelectTrigger data-testid="gallery-sort" className="rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date-desc">Fecha (recientes)</SelectItem>
+              <SelectItem value="date-asc">Fecha (antiguos)</SelectItem>
+              <SelectItem value="category-asc">Categoría (A-Z)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
@@ -155,7 +179,7 @@ export default function Gallery() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" data-testid="gallery-grid">
-          {items.map((e) => {
+          {sortedItems.map((e) => {
             const rs = receiptsOf(e);
             return (
             <button

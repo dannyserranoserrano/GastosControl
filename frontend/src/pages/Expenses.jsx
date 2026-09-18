@@ -40,7 +40,7 @@ function datePresets(today = new Date()) {
 
 export default function Expenses() {
   const { categories } = useCategories();
-  const { projects, activeProject, setActiveProject, refreshFromExpenses } = useProjects();
+  const { activeProject, refreshFromExpenses } = useProjects();
   const [items, setItems] = useState([]);
   const [allExpenses, setAllExpenses] = useState([]);
   const [q, setQ] = useState("");
@@ -227,7 +227,7 @@ export default function Expenses() {
           <p className="text-xs font-mono uppercase tracking-widest text-[#5C626A]">Gastos</p>
           <h1 className="font-heading text-3xl sm:text-4xl font-extrabold text-[#1A1D20] mt-1">Todos los gastos</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:pb-0 [&>*]:shrink-0">
           <AutoRulesManager />
           <RecurringManager onChanged={load} />
           <CsvImportDialog existing={allExpenses} onDone={load} defaultProject={activeProject} closedMonths={closedMonths} />
@@ -275,7 +275,7 @@ export default function Expenses() {
       )}
 
       <Card className="p-4 sm:p-5 rounded-2xl border-[#E2DDD3] bg-white">
-         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="sm:col-span-2 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5C626A]" />
             <Input
@@ -294,20 +294,6 @@ export default function Expenses() {
               <SelectItem value="all">Todas las categorías</SelectItem>
                {categories.map((c) => (
                 <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={activeProject || "all"}
-            onValueChange={(v) => setActiveProject(v === "all" ? "" : v)}
-          >
-            <SelectTrigger data-testid="select-filter-project" className="rounded-xl">
-              <SelectValue placeholder="Todos los proyectos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los proyectos</SelectItem>
-              {projects.map((name) => (
-                <SelectItem key={name} value={name}>{name}</SelectItem>
               ))}
             </SelectContent>
           </Select>

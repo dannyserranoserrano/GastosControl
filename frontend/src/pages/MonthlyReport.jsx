@@ -8,6 +8,7 @@ import { Progress } from "../components/ui/progress";
 import CategoryBadge from "../components/CategoryBadge";
 import { Download, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Receipt, BarChart3, Printer, Lock, Unlock } from "lucide-react";
 import { loadClosed, toggleMonth } from "../lib/closedMonths";
+import { normalizePeriod } from "../lib/period";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -48,6 +49,7 @@ export default function MonthlyReport() {
     return monthKey(d.getFullYear(), d.getMonth());
   });
   const [expenses, setExpenses] = useState([]);
+  const [yearExpenses, setYearExpenses] = useState([]);
   const [budget, setBudget] = useState(null);
   const [projectBudgets, setProjectBudgets] = useState({});
   const [loading, setLoading] = useState(false);
@@ -70,15 +72,17 @@ export default function MonthlyReport() {
   const load = async () => {
     setLoading(true);
     try {
-      const [start, end] = [`${selectedMonth}-01`, `${selectedMonth}-31`];
-      const params = { start, end };
+      const year = selectedMonth.slice(0, 4);
+      const params = { start: `${year}-01-01`, end: `${selectedMonth}-31` };
       if (activeProject) params.project = activeProject;
       const budgetParams = activeProject ? { params: { project: activeProject } } : {};
       const [expResp, budResp] = await Promise.all([
         api.get("/expenses", { params }),
         api.get("/budget", budgetParams),
       ]);
-      setExpenses(expResp.data || []);
+      const all = expResp.data || [];
+      setYearExpenses(all);
+      setExpenses(all.filter((e) => String(e.date || "").startsWith(selectedMonth)));
       setBudget(budResp.data || {});
     } finally {
       setLoading(false);
@@ -98,9 +102,9 @@ export default function MonthlyReport() {
         projects.map(async (p) => {
           try {
             const { data } = await api.get("/budget", { params: { project: p } });
-            return [p, Number(data.total || 0)];
+            return [p, { total: Number(data.total || 0), period: normalizePeriod(data.period) }];
           } catch {
-            return [p, 0];
+            return [p, { total: 0, period: "monthly" }];
           }
         })
       );
@@ -110,10 +114,14 @@ export default function MonthlyReport() {
   }, [activeProject, projects]);
 
   const total = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const yearTotal = yearExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
   const avgTicket = expenses.length > 0 ? total / expenses.length : 0;
+  const budgetPeriod = normalizePeriod(budget?.period);
+  const isYearlyBudget = budgetPeriod === "yearly";
+  const budgetSpent = isYearlyBudget ? yearTotal : total;
   const budgetTotal = Number(budget?.total || 0);
-  const budgetPct = budgetTotal > 0 ? (total / budgetTotal) * 100 : 0;
-  const overBudget = budgetTotal > 0 && total > budgetTotal;
+  const budgetPct = budgetTotal > 0 ? (budgetSpent / budgetTotal) * 100 : 0;
+  const overBudget = budgetTotal > 0 && budgetSpent > budgetTotal;
 
   const byCategory = {};
   expenses.forEach((e) => {
@@ -143,9 +151,24 @@ export default function MonthlyReport() {
     .sort((a, b) => b[1] - a[1])
     .map(([project, amount]) => ({ project, amount: Math.round(amount * 100) / 100 }));
 
+  const deviationPeriodLabel = isYearlyBudget
+    ? `enero–${getMonthName(selectedMonth)} (acumulado del año)`
+    : getMonthName(selectedMonth);
+
   const catBudgetsRaw = budget?.category_budgets || {};
   const alertThreshold = Number(budget?.alert_at || 80) || 80;
-  const deviationRows = categoryRows
+
+  const deviationSource = isYearlyBudget ? yearExpenses : expenses;
+  const byCategoryDev = {};
+  deviationSource.forEach((e) => {
+    const cat = e.category || "Otros";
+    byCategoryDev[cat] = (byCategoryDev[cat] || 0) + Number(e.amount || 0);
+  });
+  const deviationCatRows = Object.entries(byCategoryDev)
+    .sort((a, b) => b[1] - a[1])
+    .map(([cat, amount]) => ({ cat, amount: Math.round(amount * 100) / 100 }));
+
+  const deviationRows = deviationCatRows
     .map((r) => {
       const limit = Number(catBudgetsRaw[r.cat] || 0);
       return {
@@ -162,16 +185,29 @@ export default function MonthlyReport() {
   const devTotDev = Math.round((devTotSpent - devTotLimit) * 100) / 100;
   const devTotOver = devTotLimit > 0 && devTotSpent > devTotLimit;
 
+  const byProjectYtd = {};
+  yearExpenses.forEach((e) => {
+    const p = e.project || "Sin proyecto";
+    byProjectYtd[p] = (byProjectYtd[p] || 0) + Number(e.amount || 0);
+  });
+
   const projectDevRows = projectRows.map((r) => {
     const isGeneral = r.project === "Sin proyecto";
-    const limit = isGeneral ? budgetTotal : Number(projectBudgets[r.project] || 0);
+    const meta = projectBudgets[r.project];
+    const limit = isGeneral ? budgetTotal : Number(meta?.total || 0);
+    const rowPeriod = isGeneral ? budgetPeriod : normalizePeriod(meta?.period);
+    const yearly = rowPeriod === "yearly";
+    const spent = yearly
+      ? Math.round((byProjectYtd[r.project] || 0) * 100) / 100
+      : r.amount;
     return {
       project: r.project,
-      spent: r.amount,
+      spent,
       budget: limit,
-      dev: Math.round((r.amount - limit) * 100) / 100,
-      over: limit > 0 && r.amount > limit,
+      dev: Math.round((spent - limit) * 100) / 100,
+      over: limit > 0 && spent > limit,
       noBudget: limit <= 0,
+      yearly,
     };
   });
 
@@ -236,7 +272,7 @@ export default function MonthlyReport() {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 no-print">
+        <div className="flex items-center gap-2 no-print overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:pb-0 [&>*]:shrink-0">
           <Button variant="outline" size="sm" className="rounded-xl border-[#E2DDD3]" onClick={() => setSelectedMonth(prevMonth(selectedMonth))}>
             <ChevronLeft className="w-4 h-4" />
           </Button>
@@ -300,8 +336,8 @@ export default function MonthlyReport() {
             <KpiCard label="Nº tickets" value={expenses.length} />
             <KpiCard label="Ticket medio" value={eur(avgTicket)} />
             <KpiCard
-              label="Presupuesto"
-              value={budgetTotal > 0 ? `${eur(total)} / ${eur(budgetTotal)}` : "Sin definir"}
+              label={isYearlyBudget ? "Presupuesto anual" : "Presupuesto"}
+              value={budgetTotal > 0 ? `${eur(budgetSpent)} / ${eur(budgetTotal)}` : "Sin definir"}
               accent={overBudget ? "text-red-700" : "text-emerald-700"}
             />
           </div>
@@ -309,7 +345,9 @@ export default function MonthlyReport() {
           {budgetTotal > 0 && (
             <Card className="p-5 rounded-2xl border-[#E2DDD3] bg-white">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-mono text-[#5C626A]">Consumo del presupuesto</span>
+                <span className="text-sm font-mono text-[#5C626A]">
+                  Consumo del presupuesto{isYearlyBudget ? " (acumulado del año)" : ""}
+                </span>
                 <span className={`font-heading font-bold text-lg ${overBudget ? "text-red-700" : "text-[#1A1D20]"}`}>
                   {budgetPct.toFixed(1)}%
                 </span>
@@ -398,7 +436,7 @@ export default function MonthlyReport() {
           <Card data-testid="deviations-card" className="p-5 sm:p-6 rounded-2xl border-[#E2DDD3] bg-white">
             <h3 className="font-heading font-bold text-lg">Desviación presupuesto vs real</h3>
             <p className="text-sm text-[#5C626A] mt-1">
-              Comparativa de {getMonthName(selectedMonth)}
+              Comparativa de {deviationPeriodLabel}
               {activeProject ? ` para «${activeProject}»` : ""}.
             </p>
 
@@ -458,7 +496,8 @@ export default function MonthlyReport() {
               <div className="mt-6">
                 <h4 className="font-heading font-bold">Por proyecto</h4>
                 <p className="text-xs text-[#5C626A] mt-1">
-                  Presupuesto y gasto de {getMonthName(selectedMonth)} por proyecto.
+                  Presupuesto y gasto de {deviationPeriodLabel} por proyecto. Los proyectos con
+                  presupuesto anual muestran el acumulado del año.
                 </p>
                 <div className="overflow-x-auto mt-3">
                   <table className="w-full text-sm min-w-[520px]">
@@ -474,7 +513,16 @@ export default function MonthlyReport() {
                     <tbody>
                       {projectDevRows.map((r) => (
                         <tr key={r.project} className="border-t border-[#E2DDD3]">
-                          <td className="py-2 font-medium text-[#1A1D20] truncate max-w-[180px]">{r.project}</td>
+                          <td className="py-2 font-medium text-[#1A1D20] max-w-[200px]">
+                            <span className="flex items-center gap-1.5">
+                              <span className="truncate">{r.project}</span>
+                              {r.yearly && (
+                                <span className="shrink-0 text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#1E293B]/10 text-[#1E293B]">
+                                  anual
+                                </span>
+                              )}
+                            </span>
+                          </td>
                           <td className="py-2 text-right font-mono">{r.noBudget ? "—" : eur(r.budget)}</td>
                           <td className="py-2 text-right font-mono">{eur(r.spent)}</td>
                           <td className={`py-2 text-right font-mono font-semibold ${r.over ? "text-red-700" : r.noBudget ? "text-[#5C626A]" : "text-emerald-700"}`}>
