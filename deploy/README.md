@@ -79,11 +79,10 @@ sudo /usr/local/bin/duckdns-update.sh
 - El vhost `:80` (`apache-gastoscontrol.conf`) redirige a HTTPS; el `:443`
   (`apache-gastoscontrol-le-ssl.conf`) añade `HSTS`, `CSP`, `X-Frame-Options`,
   `X-Content-Type-Options`, `Referrer-Policy` y `Permissions-Policy`. Aplica los
-  vhosts y recarga:
+  vhosts y recarga (el script sustituye `__DOMAIN__`/`__OCR_PORT__` y solo toca
+  los vhosts de GastoControl):
   ```bash
-  sudo install -m 0644 deploy/apache-gastoscontrol.conf /etc/apache2/sites-available/gastoscontrol.conf
-  sudo install -m 0644 deploy/apache-gastoscontrol-le-ssl.conf /etc/apache2/sites-available/gastoscontrol-le-ssl.conf
-  sudo apache2ctl configtest && sudo systemctl reload apache2
+  ./deploy/install-apache.sh [DOMINIO] [PUERTO_OCR]
   ```
 - **Supabase**: ejecuta `supabase/fix_receipts_policies.sql` en el SQL Editor para
   quitar el listado anónimo del bucket `receipts` y limitar la subida a la carpeta
