@@ -116,14 +116,20 @@ export default function Login() {
       toast.error("Escribe tu correo para enviarte el enlace");
       return;
     }
+    if (turnstileEnabled && !captchaToken) {
+      toast.error("Completa la verificación de seguridad");
+      return;
+    }
     setResetBusy(true);
     try {
-      await sendPasswordReset(mail);
+      await sendPasswordReset(mail, captchaToken);
       toast.success("Te hemos enviado un correo para restablecer la contraseña");
     } catch (err) {
       toast.error(traducirError(err?.message));
     } finally {
       setResetBusy(false);
+      setCaptchaToken(null);
+      setTurnstileNonce((n) => n + 1);
     }
   };
 

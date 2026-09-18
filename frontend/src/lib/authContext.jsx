@@ -119,10 +119,11 @@ export function AuthProvider({ children }) {
     setPasswordRecovery(false);
   }, []);
 
-  const sendPasswordReset = useCallback(async (email) => {
+  const sendPasswordReset = useCallback(async (email, captchaToken) => {
     if (!supabase) throw new Error("Supabase no configurado");
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/login`,
+      ...(captchaToken ? { captchaToken } : {}),
     });
     if (error) throw error;
   }, []);

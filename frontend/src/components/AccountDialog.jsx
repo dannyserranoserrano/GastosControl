@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { KeyRound, Mail, ShieldCheck, ExternalLink, AlertTriangle } from "lucide-react";
+import Turnstile, { turnstileEnabled } from "@/components/Turnstile";
 
 const PROVIDER_INFO = {
   google: { label: "Google", url: "https://myaccount.google.com/security" },
@@ -24,6 +25,7 @@ function traducir(msg) {
     return "Por seguridad, vuelve a iniciar sesión e inténtalo de nuevo";
   }
   if (m.includes("rate limit") || m.includes("too many")) return "Demasiados intentos, espera un momento";
+  if (m.includes("captcha")) return "Verificación de seguridad fallida, inténtalo de nuevo";
   return msg || "No se pudo completar la operación";
 }
 
@@ -33,6 +35,8 @@ export default function AccountDialog({ open, onOpenChange }) {
   const [pw2, setPw2] = useState("");
   const [busy, setBusy] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const [turnstileNonce, setTurnstileNonce] = useState(0);
 
   useEffect(() => {
     if (!open) {
@@ -71,14 +75,20 @@ export default function AccountDialog({ open, onOpenChange }) {
   };
 
   const recover = async () => {
+    if (turnstileEnabled && !captchaToken) {
+      toast.error("Completa la verificación de seguridad");
+      return;
+    }
     setResetBusy(true);
     try {
-      await sendPasswordReset(user.email);
+      await sendPasswordReset(user.email, captchaToken);
       toast.success("Te hemos enviado un correo para restablecer la contraseña");
     } catch (err) {
       toast.error(traducir(err?.message));
     } finally {
       setResetBusy(false);
+      setCaptchaToken(null);
+      setTurnstileNonce((n) => n + 1);
     }
   };
 
@@ -155,6 +165,11 @@ export default function AccountDialog({ open, onOpenChange }) {
             >
               {busy ? "Guardando…" : "Guardar contraseña"}
             </Button>
+            {turnstileEnabled && (
+              <div className="flex justify-center">
+                <Turnstile key={turnstileNonce} onVerify={setCaptchaToken} />
+              </div>
+            )}
             <button
               type="button"
               onClick={recover}
