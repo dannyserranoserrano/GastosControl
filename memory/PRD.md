@@ -116,6 +116,7 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Limpieza de código muerto y ~35 dependencias sin usar
 - [x] Utilidades de fecha/texto centralizadas (`lib/dates.js`, `lib/text.js`)
 - [x] Accesibilidad básica: enlace «Saltar al contenido», `<main>`, `aria-label` en botones solo-icono, navegación y diálogo móvil
+- [x] Listas largas con render incremental («Mostrar más») en Gastos y Galería
 
 ## Backlog (sugerencias para más adelante)
 Pequeñas:

@@ -18,6 +18,7 @@ import RecurringManager from "../components/RecurringManager";
 import { useRecurring } from "../lib/useRecurring";
 import { useProjects } from "../lib/projectsContext";
 import { loadClosed } from "../lib/closedMonths";
+import { useIncrementalList } from "../lib/useIncrementalList";
 import { toast } from "sonner";
 import { Plus, Download, Search, Trash2, Pencil, ImageIcon, Copy, CopyPlus, Calendar, X, Lock } from "lucide-react";
 
@@ -100,6 +101,9 @@ export default function Expenses() {
     }
     return list;
   }, [items, duplicates, showDuplicatesOnly, sort]);
+
+  const { visible: visibleItems, hasMore, showMore, total: totalItems } =
+    useIncrementalList(sortedItems, 40);
   const closedMonths = loadClosed(activeProject);
   const isLocked = (date) => closedMonths.includes(String(date || "").slice(0, 7));
 
@@ -476,7 +480,7 @@ export default function Expenses() {
           </div>
         ) : (
           <ul className="divide-y divide-[#E2DDD3]">
-            {sortedItems.map((e) => {
+            {visibleItems.map((e) => {
               const dupes = duplicates.get(e.id);
               const receiptList = Array.isArray(e.receipts) && e.receipts.length
                 ? e.receipts
@@ -599,6 +603,18 @@ export default function Expenses() {
               );
             })}
           </ul>
+        )}
+        {!loading && items.length > 0 && hasMore && (
+          <div className="p-4 text-center border-t border-[#E2DDD3]">
+            <Button
+              variant="outline"
+              data-testid="btn-show-more"
+              onClick={showMore}
+              className="rounded-xl border-[#E2DDD3]"
+            >
+              Mostrar más ({visibleItems.length} de {totalItems})
+            </Button>
+          </div>
         )}
       </Card>
 

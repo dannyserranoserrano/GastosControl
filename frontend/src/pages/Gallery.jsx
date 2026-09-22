@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, eur } from "../lib/api";
 import { resolveReceiptSrc } from "../lib/receipts";
+import { useIncrementalList } from "../lib/useIncrementalList";
 import ReceiptImage from "../components/ReceiptImage";
 import ReceiptViewer from "../components/ReceiptViewer";
 import { useCategories } from "../lib/categoriesContext";
@@ -112,6 +113,9 @@ export default function Gallery() {
     return list;
   }, [items, sort]);
 
+  const { visible: visibleItems, hasMore, showMore, total: totalItems } =
+    useIncrementalList(sortedItems, 24);
+
   const open = (e) => {
     setActive(e);
     setZoomed(false);
@@ -186,8 +190,9 @@ export default function Gallery() {
           <p>No hay tickets todavía. Escanea uno para verlo aquí.</p>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" data-testid="gallery-grid">
-          {sortedItems.map((e) => {
+          {visibleItems.map((e) => {
             const rs = receiptsOf(e);
             return (
             <button
@@ -222,6 +227,19 @@ export default function Gallery() {
             );
           })}
         </div>
+        {hasMore && (
+          <div className="text-center">
+            <Button
+              variant="outline"
+              data-testid="btn-show-more"
+              onClick={showMore}
+              className="rounded-xl border-[#E2DDD3]"
+            >
+              Mostrar más ({visibleItems.length} de {totalItems})
+            </Button>
+          </div>
+        )}
+        </>
       )}
 
       <Dialog open={!!active} onOpenChange={(o) => !o && setActive(null)}>
