@@ -2,6 +2,11 @@ const DB_NAME = "gastocontrol";
 const DB_VERSION = 1;
 const STORE = "kv";
 
+// Los ficheros locales (imágenes/PDF) se guardan con este prefijo y los gastos
+// solo referencian un id, para no arrastrar los base64 en cada listado.
+export const LOCAL_FILE_PREFIX = "gastocontrol:file:";
+export const localFileKey = (id) => `${LOCAL_FILE_PREFIX}${id}`;
+
 function open() {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
@@ -52,4 +57,8 @@ export function dbDel(key) {
 
 export function dbClear() {
   return withStore("readwrite", (s) => s.clear());
+}
+
+export function dbKeys() {
+  return withStore("readonly", (s) => s.getAllKeys());
 }

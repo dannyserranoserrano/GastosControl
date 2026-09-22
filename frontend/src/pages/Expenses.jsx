@@ -501,6 +501,8 @@ export default function Expenses() {
                     <ReceiptImage
                       receipt={firstReceipt}
                       alt="ticket"
+                      width={56}
+                      height={56}
                       className="w-full h-full object-cover"
                     />
                   ) : (

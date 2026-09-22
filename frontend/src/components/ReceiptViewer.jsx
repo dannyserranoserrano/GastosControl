@@ -66,6 +66,7 @@ export default function ReceiptViewer({ receipt, className = "", ...rest }) {
     <img
       src={src}
       alt="ticket"
+      decoding="async"
       {...rest}
       className={`w-full object-contain rounded-xl border border-[#E2DDD3] ${className}`}
     />

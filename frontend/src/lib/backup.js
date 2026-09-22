@@ -1,4 +1,4 @@
-import { dbGet, dbSet, dbClear } from "./storage";
+import { dbGet, dbSet, dbClear, dbKeys, LOCAL_FILE_PREFIX } from "./storage";
 
 export const BACKUP_VERSION = 1;
 
@@ -40,12 +40,22 @@ export async function buildBackup() {
     const v = await dbGet(k);
     if (v !== undefined) indexeddb[k] = v;
   }
+  // Ficheros locales de tickets (imágenes/PDF) guardados aparte
+  const files = {};
+  try {
+    for (const k of await dbKeys()) {
+      if (String(k).startsWith(LOCAL_FILE_PREFIX)) files[String(k)] = await dbGet(k);
+    }
+  } catch {
+    /* ignore */
+  }
   return {
     app: "GastoControl",
     version: BACKUP_VERSION,
     exported_at: new Date().toISOString(),
     localStorage: localStorageData,
     indexeddb,
+    files,
   };
 }
 
@@ -91,6 +101,11 @@ export async function importBackup(text) {
   const db = data.indexeddb || {};
   for (const k of DB_KEYS) {
     if (k in db) await dbSet(k, db[k]);
+  }
+
+  const files = data.files || {};
+  for (const [k, v] of Object.entries(files)) {
+    if (String(k).startsWith(LOCAL_FILE_PREFIX)) await dbSet(k, v);
   }
 
   return {

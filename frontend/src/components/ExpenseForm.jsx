@@ -203,6 +203,8 @@ export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar"
               <ReceiptImage
                 receipt={r}
                 alt="ticket"
+                width={64}
+                height={64}
                 className="w-full h-full object-cover"
               />
               <button

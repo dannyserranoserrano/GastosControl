@@ -2,7 +2,7 @@ import { supabase } from "./supabase";
 import { readLocalStore } from "./localBackend";
 import { DEFAULT_CATEGORIES } from "./constants";
 import { uploadReceiptToStorage } from "./supabaseData";
-import { dbGet, dbSet } from "./storage";
+import { dbGet, dbSet, localFileKey } from "./storage";
 
 const flagKey = (userId) => `gastocontrol:migrated:${userId}`;
 
@@ -62,6 +62,12 @@ export async function importLocalToCloud(userId) {
 
     let receipt_path = e.receipt_path || null;
     let receipt_url = e.receipt_url || null;
+    // Referencias locales (`local:<id>`): recupera el data-URL guardado aparte.
+    if (receipt_path && (receipt_path.startsWith("local:") || receipt_path.startsWith("localpdf:"))) {
+      const id = receipt_path.slice(receipt_path.indexOf(":") + 1);
+      receipt_path = (await dbGet(localFileKey(id))) || null;
+      receipt_url = receipt_path;
+    }
     if (receipt_path && receipt_path.startsWith("data:")) {
       const storedPath = await uploadReceiptToStorage(userId, receipt_path);
       receipt_path = storedPath;

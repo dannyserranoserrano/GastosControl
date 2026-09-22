@@ -1,5 +1,5 @@
 import { DEFAULT_CATEGORIES } from "./constants";
-import { dbGet, dbSet } from "./storage";
+import { dbGet, dbSet, dbDel, localFileKey } from "./storage";
 import { normalizePeriod, periodRange } from "./period";
 import { csvSafe } from "./csv";
 
@@ -106,15 +106,46 @@ async function normalizeCategory(cat, cats) {
   return cats.some((c) => c.name === cat) ? cat : "Otros";
 }
 
+// Guarda el fichero (data-URL) aparte en IndexedDB y devuelve una referencia
+// ligera `local:<id>` (o `localpdf:<id>`). Las rutas no-data (backend OCR) se
+// conservan tal cual.
+async function storeReceipt(r) {
+  const raw = (r && (r.path || r.url)) || null;
+  if (!raw) return null;
+  if (raw.startsWith("data:")) {
+    const id = uid();
+    await dbSet(localFileKey(id), raw);
+    const ref = `${raw.startsWith("data:application/pdf") ? "localpdf:" : "local:"}${id}`;
+    return { path: ref, url: ref };
+  }
+  return { path: raw, url: (r.url || raw) };
+}
+
+function receiptFileRefs(exp) {
+  const refs = new Set();
+  const list = [...(exp.receipts || []), { path: exp.receipt_path, url: exp.receipt_url }];
+  list.forEach((r) => {
+    const raw = (r && (r.path || r.url)) || "";
+    if (raw.startsWith("local:") || raw.startsWith("localpdf:")) {
+      refs.add(raw.slice(raw.indexOf(":") + 1));
+    }
+  });
+  return refs;
+}
+
+async function deleteReceiptFiles(exp) {
+  for (const id of receiptFileRefs(exp)) {
+    try {
+      await dbDel(localFileKey(id));
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 async function buildExpense(body, cats) {
-  const receipts = Array.isArray(body && body.receipts)
-    ? body.receipts
-        .map((r) => ({
-          path: (r && (r.path || r.url)) || null,
-          url: (r && (r.url || r.path)) || null,
-        }))
-        .filter((r) => r.path || r.url)
-    : [];
+  const rawList = Array.isArray(body && body.receipts) ? body.receipts : [];
+  const receipts = (await Promise.all(rawList.map(storeReceipt))).filter(Boolean);
   return {
     id: uid(),
     vendor: (body && body.vendor) || "",
@@ -275,20 +306,26 @@ async function dispatch(method, url, body, config) {
     }
     if (method === "patch") {
       if (idx === -1) throw fail(404, "Not found");
-      const next = { ...list[idx] };
+      const prev = list[idx];
+      const next = { ...prev };
       ["vendor", "date", "amount", "category", "project", "notes", "items", "receipts"].forEach((k) => {
         if (body && body[k] !== undefined) next[k] = body[k];
       });
       next.project = String(next.project || "").trim().slice(0, 80);
       if (Array.isArray(next.receipts)) {
-        next.receipts = next.receipts
-          .map((r) => ({
-            path: (r && (r.path || r.url)) || null,
-            url: (r && (r.url || r.path)) || null,
-          }))
-          .filter((r) => r.path || r.url);
+        next.receipts = (await Promise.all(next.receipts.map(storeReceipt))).filter(Boolean);
         next.receipt_path = next.receipts[0]?.path || null;
         next.receipt_url = next.receipts[0]?.url || null;
+        const kept = receiptFileRefs(next);
+        for (const id of receiptFileRefs(prev)) {
+          if (!kept.has(id)) {
+            try {
+              await dbDel(localFileKey(id));
+            } catch {
+              /* ignore */
+            }
+          }
+        }
       } else if (body && body.receipt_path !== undefined) {
         next.receipt_path = body.receipt_path;
         next.receipt_url = body.receipt_url || body.receipt_path;
@@ -301,6 +338,7 @@ async function dispatch(method, url, body, config) {
     }
     if (method === "delete") {
       if (idx === -1) throw fail(404, "Not found");
+      await deleteReceiptFiles(list[idx]);
       list.splice(idx, 1);
       await persistExpenses(list);
       return { ok: true };
@@ -472,9 +510,10 @@ async function dispatch(method, url, body, config) {
     const file = body && typeof body.get === "function" ? body.get("file") : null;
     const dataUrl = file ? await fileToDataUrl(file) : null;
     if (!dataUrl) throw fail(400, "Empty file");
+    const ref = await storeReceipt({ path: dataUrl, url: dataUrl });
     return {
-      receipt_path: dataUrl,
-      receipt_url: dataUrl,
+      receipt_path: ref.path,
+      receipt_url: ref.url,
       extracted: {
         vendor: "",
         date: today(),

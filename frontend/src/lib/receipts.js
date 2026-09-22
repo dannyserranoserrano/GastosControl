@@ -1,10 +1,44 @@
 import { supabase, isConfigured } from "./supabase";
 import { toBackendUrl, USE_REMOTE } from "./api";
+import { dbGet, localFileKey } from "./storage";
 
 const OCR_KEY = import.meta.env.VITE_OCR_KEY;
 const SIGNED_TTL = 3600;
-const signedCache = new Map();
 const blobCache = new Map();
+
+// Ficheros locales (modo invitado): las imágenes/PDF se guardan aparte en
+// IndexedDB y el gasto solo referencia un id (`local:<id>` / `localpdf:<id>`),
+// para no arrastrar los base64 en cada listado.
+const LOCAL_PREFIX = "local:";
+const LOCAL_PDF_PREFIX = "localpdf:";
+
+// Caché persistente de URLs firmadas (path -> { url, exp }) para reutilizarlas
+// entre recargas y aprovechar la caché del service worker.
+const SIGNED_LS = "gastocontrol:signed_urls";
+let signedCache = null;
+
+function loadSigned() {
+  if (signedCache) return signedCache;
+  try {
+    const m = JSON.parse(localStorage.getItem(SIGNED_LS) || "{}");
+    signedCache = m && typeof m === "object" ? m : {};
+  } catch {
+    signedCache = {};
+  }
+  return signedCache;
+}
+
+function persistSigned() {
+  try {
+    const now = Date.now();
+    const entries = Object.entries(loadSigned()).filter(([, v]) => v && v.exp > now);
+    const trimmed = Object.fromEntries(entries.slice(-500));
+    localStorage.setItem(SIGNED_LS, JSON.stringify(trimmed));
+    signedCache = trimmed;
+  } catch {
+    /* ignore */
+  }
+}
 
 function isSupabaseStorageUrl(s) {
   return typeof s === "string" && /\/storage\/v1\/object\/(public|sign)\/receipts\//.test(s);
@@ -35,6 +69,7 @@ export function receiptIsPdf(r) {
   const raw = (r && (r.url || r.path)) || "";
   if (!raw) return false;
   if (raw.startsWith("data:application/pdf")) return true;
+  if (raw.startsWith(LOCAL_PDF_PREFIX)) return true;
   if (r && r.type === "application/pdf") return true;
   return /\.pdf(\?|$)/i.test(raw);
 }
@@ -58,15 +93,27 @@ export async function resolveReceiptSrc(r) {
   if (!raw) return null;
   if (raw.startsWith("data:")) return raw;
 
+  // Fichero local (IndexedDB): devuelve su data-URL guardada.
+  if (raw.startsWith(LOCAL_PREFIX) || raw.startsWith(LOCAL_PDF_PREFIX)) {
+    const id = raw.slice(raw.indexOf(":") + 1);
+    try {
+      return (await dbGet(localFileKey(id))) || null;
+    } catch {
+      return null;
+    }
+  }
+
   const sp = receiptStoragePath(r);
   if (sp && isConfigured && supabase) {
     const now = Date.now();
-    const cached = signedCache.get(sp);
+    const cache = loadSigned();
+    const cached = cache[sp];
     if (cached && cached.exp > now + 60000) return cached.url;
     try {
       const { data, error } = await supabase.storage.from("receipts").createSignedUrl(sp, SIGNED_TTL);
       if (!error && data?.signedUrl) {
-        signedCache.set(sp, { url: data.signedUrl, exp: now + SIGNED_TTL * 1000 });
+        cache[sp] = { url: data.signedUrl, exp: now + SIGNED_TTL * 1000 };
+        persistSigned();
         return data.signedUrl;
       }
     } catch {
