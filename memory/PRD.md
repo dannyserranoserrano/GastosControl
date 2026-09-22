@@ -46,6 +46,7 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Informe mensual exportable (por categoría, top proveedores, por proyecto, CSV)
 - [x] Detección de duplicados (mismo importe + fecha + proveedor similar, badge + aviso Dashboard)
 - [x] Filtro por rango de fechas en `/gastos` (desde/hasta, rangos rápidos y total del resultado)
+- [x] Orden de la lista de gastos: fecha (recientes/antiguos), categoría (A-Z) y con/sin ticket adjunto
 - [x] Auto-categorización por proveedor (aprende del historial + reglas explícitas gestionables)
 - [x] Importar gastos desde CSV (parseo flexible, previsualización, validación y omisión de duplicados)
 - [x] Gastos recurrentes (plantillas mensuales que se generan automáticamente, con pausa y generación manual)

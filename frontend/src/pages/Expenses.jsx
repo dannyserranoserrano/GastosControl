@@ -54,8 +54,35 @@ export default function Expenses() {
   const [editItem, setEditItem] = useState(null);
   const [previewImages, setPreviewImages] = useState([]);
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
+  const [sort, setSort] = useState("date-desc");
 
   const duplicates = useMemo(() => findDuplicates(allExpenses), [allExpenses]);
+
+  const sortedItems = useMemo(() => {
+    const hasReceipt = (e) =>
+      (Array.isArray(e.receipts) && e.receipts.length > 0) || !!e.receipt_path;
+    const byDate = (a, b) => String(a.date || "").localeCompare(String(b.date || ""));
+    const byCat = (a, b) =>
+      String(a.category || "Otros").localeCompare(String(b.category || "Otros"));
+    const list = [...items].filter((e) => !showDuplicatesOnly || duplicates.has(e.id));
+    switch (sort) {
+      case "date-asc":
+        list.sort(byDate);
+        break;
+      case "category-asc":
+        list.sort((a, b) => byCat(a, b) || byDate(b, a));
+        break;
+      case "receipt-first":
+        list.sort((a, b) => (hasReceipt(b) ? 1 : 0) - (hasReceipt(a) ? 1 : 0) || byDate(b, a));
+        break;
+      case "no-receipt-first":
+        list.sort((a, b) => (hasReceipt(a) ? 1 : 0) - (hasReceipt(b) ? 1 : 0) || byDate(b, a));
+        break;
+      default:
+        list.sort((a, b) => byDate(b, a));
+    }
+    return list;
+  }, [items, duplicates, showDuplicatesOnly, sort]);
   const closedMonths = loadClosed(activeProject);
   const isLocked = (date) => closedMonths.includes(String(date || "").slice(0, 7));
 
@@ -276,7 +303,7 @@ export default function Expenses() {
       )}
 
       <Card className="p-4 sm:p-5 rounded-2xl border-[#E2DDD3] bg-white">
-         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="sm:col-span-2 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5C626A]" />
             <Input
@@ -296,6 +323,18 @@ export default function Expenses() {
                {categories.map((c) => (
                 <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={setSort}>
+            <SelectTrigger data-testid="select-sort" className="rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date-desc">Fecha (recientes)</SelectItem>
+              <SelectItem value="date-asc">Fecha (antiguos)</SelectItem>
+              <SelectItem value="category-asc">Categoría (A-Z)</SelectItem>
+              <SelectItem value="receipt-first">Con ticket primero</SelectItem>
+              <SelectItem value="no-receipt-first">Sin ticket primero</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -430,9 +469,7 @@ export default function Expenses() {
           </div>
         ) : (
           <ul className="divide-y divide-[#E2DDD3]">
-            {items
-              .filter((e) => !showDuplicatesOnly || duplicates.has(e.id))
-              .map((e) => {
+            {sortedItems.map((e) => {
               const dupes = duplicates.get(e.id);
               const receiptList = Array.isArray(e.receipts) && e.receipts.length
                 ? e.receipts
