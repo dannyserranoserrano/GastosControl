@@ -10,10 +10,11 @@ export const HELP_ITEMS = [
   {
     id: "adjuntos-pdf",
     icon: "FileText",
-    title: "Adjuntar PDFs como ticket",
+    title: "Adjuntar y escanear PDFs",
     updated: "2026-09-22",
     body: [
       "En el formulario de un gasto puedes adjuntar imágenes o PDFs (facturas, justificantes…).",
+      "El escáner con IA también analiza PDFs de facturas, además de JPG/PNG/WEBP.",
       "Los PDF se muestran como una ficha con icono; al abrirlos se ven en un visor (o en una pestaña). También aparecen en la Galería y en la lista de Gastos.",
     ],
   },

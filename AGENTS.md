@@ -45,7 +45,7 @@ Auth (opcional):
 
 - **Frontend**: React 19 SPA con **Vite 6** (`@vitejs/plugin-react`).
 - **Backend** (opcional): FastAPI + MongoDB (Motor async), en `backend/`.
-- **IA/OCR** (solo con backend): Gemini 3.1 Pro (`gemini-3.1-pro-preview`) vía `emergentintegrations.llm.chat.LlmChat`.
+- **IA/OCR** (solo con backend): Gemini (por defecto `gemini-2.5-flash` con `GEMINI_API_KEY`, o `gemini-3.1-pro-preview` vía Emergent `LlmChat`). Las **imágenes** se envían por el endpoint OpenAI-compatible; los **PDF** se analizan con la API nativa de Gemini (`generateContent` + `inlineData`).
 - **Storage** (solo con backend): Emergent Object Storage.
 - **Auth**: Supabase Auth (`@supabase/supabase-js`) en el cliente.
 - **Datos en la nube (opcional)**: con sesión de Supabase, los gastos/categorías/presupuesto se guardan en Postgres (tablas `categories`, `expenses`, `budget`) y las imágenes en Supabase Storage, con RLS por usuario.

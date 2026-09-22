@@ -6,13 +6,14 @@ import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import ExpenseForm from "../components/ExpenseForm";
 import { toast } from "sonner";
-import { Camera, Upload, Sparkles, ScanLine, RefreshCw } from "lucide-react";
+import { Camera, Upload, Sparkles, ScanLine, RefreshCw, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Scan() {
   const { activeProject } = useProjects();
   const [image, setImage] = useState(null);      // File
   const [previewUrl, setPreviewUrl] = useState(null);
+  const isPdf = Boolean(image && image.type === "application/pdf");
   const [scanning, setScanning] = useState(false);
   const [extracted, setExtracted] = useState(null); // extracted data
   const [receiptPath, setReceiptPath] = useState(null);
@@ -118,7 +119,7 @@ export default function Scan() {
                 <ScanLine className="w-8 h-8 text-[#D95D39]" />
               </div>
               <p className="font-semibold text-[#1A1D20]">Arrastra una foto aquí</p>
-              <p className="text-sm text-[#5C626A] mt-1">JPG, PNG o WEBP</p>
+              <p className="text-sm text-[#5C626A] mt-1">JPG, PNG, WEBP o PDF</p>
               <div className="flex flex-wrap gap-2 justify-center mt-5">
                 <Button
                   data-testid="btn-choose-file"
@@ -139,7 +140,7 @@ export default function Scan() {
               <input
                 ref={fileRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
                 className="hidden"
                 data-testid="input-file"
                 onChange={(e) => pick(e.target.files?.[0])}
@@ -156,12 +157,25 @@ export default function Scan() {
             </div>
           ) : (
             <div className="relative rounded-2xl overflow-hidden border border-[#E2DDD3]">
-              <img
-                data-testid="img-preview"
-                src={previewUrl}
-                alt="preview"
-                className="w-full max-h-[420px] object-contain bg-[#F2EFE9]"
-              />
+              {isPdf ? (
+                <div
+                  data-testid="img-preview"
+                  className="w-full max-h-[420px] min-h-[220px] flex flex-col items-center justify-center gap-2 bg-[#F2EFE9] p-8"
+                >
+                  <FileText className="w-12 h-12 text-[#D95D39]" />
+                  <p className="text-sm font-medium text-[#1A1D20] truncate max-w-full px-4">
+                    {image?.name}
+                  </p>
+                  <p className="text-xs text-[#5C626A]">Documento PDF</p>
+                </div>
+              ) : (
+                <img
+                  data-testid="img-preview"
+                  src={previewUrl}
+                  alt="preview"
+                  className="w-full max-h-[420px] object-contain bg-[#F2EFE9]"
+                />
+              )}
               {scanning && (
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="absolute inset-x-0 laser-line h-1 bg-gradient-to-r from-transparent via-[#D95D39] to-transparent shadow-[0_0_18px_#D95D39]" />

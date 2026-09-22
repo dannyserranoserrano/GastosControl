@@ -32,7 +32,8 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Gemini 3.1 Pro para OCR
 - [x] Dashboard con KPIs y 2 gráficos recharts
 - [x] Página Gastos con filtros y tabla
-- [x] Página Escanear con drag&drop + cámara
+- [x] Página Escanear con drag&drop + cámara (imágenes o PDF)
+- [x] Escaneo con IA de PDFs de facturas (Gemini API nativa, además de JPG/PNG/WEBP)
 - [x] Página Presupuesto
 - [x] Exportar CSV
 - [x] Diseño mobile-first, tema cálido (terracota + slate)

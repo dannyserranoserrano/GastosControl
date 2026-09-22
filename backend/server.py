@@ -679,10 +679,13 @@ async def set_budget(payload: BudgetUpdate):
 # --- Receipt upload & AI extraction ---
 def _guess_ext_and_ctype(filename: str, content_type: Optional[str]):
     ext = (filename.split(".")[-1].lower() if "." in filename else "")
-    mime_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+    mime_map = {
+        "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
+        "webp": "image/webp", "pdf": "application/pdf",
+    }
     if ext in mime_map:
         return ext, mime_map[ext]
-    if content_type and content_type.startswith("image/"):
+    if content_type and (content_type.startswith("image/") or content_type == "application/pdf"):
         for e, m in mime_map.items():
             if m == content_type:
                 return e, m
@@ -741,6 +744,32 @@ async def _extract_with_gemini(data: bytes, ctype: str, extracted: dict) -> dict
     return _parse_extraction(completion.choices[0].message.content, extracted)
 
 
+async def _extract_with_gemini_pdf(data: bytes, extracted: dict) -> dict:
+    # Gemini (API nativa) admite PDF como inlineData.
+    b64 = base64.b64encode(data).decode("utf-8")
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    )
+    payload = {
+        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": [{
+            "role": "user",
+            "parts": [
+                {"inlineData": {"mimeType": "application/pdf", "data": b64}},
+                {"text": "Analiza esta factura y devuelve el JSON solicitado."},
+            ],
+        }],
+        "generationConfig": {"responseMimeType": "application/json"},
+    }
+    resp = requests.post(url, json=payload, timeout=120)
+    resp.raise_for_status()
+    candidates = resp.json().get("candidates") or [{}]
+    parts = ((candidates[0].get("content") or {}).get("parts")) or []
+    text = "".join(p.get("text", "") for p in parts)
+    return _parse_extraction(text, extracted)
+
+
 @api_router.post("/receipts/scan")
 async def scan_receipt(request: Request, file: UploadFile = File(...)):
     _require_api_key(request)
@@ -748,9 +777,18 @@ async def scan_receipt(request: Request, file: UploadFile = File(...)):
 
     filename = file.filename or "receipt.jpg"
     ext_guess = (filename.split(".")[-1].lower() if "." in filename else "")
-    looks_image = (file.content_type or "").startswith("image/") or ext_guess in ALLOWED_IMAGE_EXTS
-    if not looks_image:
-        raise HTTPException(status_code=415, detail="Formato no admitido: sube una imagen (JPG, PNG, WEBP)")
+    ct = (file.content_type or "").lower()
+    looks_ok = (
+        ct.startswith("image/")
+        or ct == "application/pdf"
+        or ext_guess in ALLOWED_IMAGE_EXTS
+        or ext_guess == "pdf"
+    )
+    if not looks_ok:
+        raise HTTPException(
+            status_code=415,
+            detail="Formato no admitido: sube una imagen (JPG, PNG, WEBP) o un PDF",
+        )
 
     data = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(data) == 0:
@@ -794,7 +832,12 @@ async def scan_receipt(request: Request, file: UploadFile = File(...)):
         "notes": "",
     }
     try:
-        if GEMINI_API_KEY:
+        if ctype == "application/pdf":
+            if GEMINI_API_KEY:
+                extracted = await _extract_with_gemini_pdf(data, extracted)
+            else:
+                logger.warning("PDF necesita GEMINI_API_KEY para el OCR; se adjunta sin analizar")
+        elif GEMINI_API_KEY:
             extracted = await _extract_with_gemini(data, ctype, extracted)
         elif EMERGENT_KEY:
             b64 = base64.b64encode(data).decode("utf-8")

@@ -35,7 +35,7 @@ export const MANUAL = [
     image: "/help/escanear.jpg",
     steps: [
       { t: "Pulsa «Escanear» (o el botón flotante en el móvil).", i: "ScanLine" },
-      { t: "Sube o fotografía el ticket (JPG, PNG o WEBP).", i: "Upload" },
+      { t: "Sube o fotografía el ticket, o un PDF (JPG, PNG, WEBP o PDF).", i: "Upload" },
       { t: "Pulsa «Analizar con IA»: se rellenan proveedor, fecha, importe, categoría e ítems.", i: "Sparkles" },
       { t: "Revisa y corrige lo que haga falta y pulsa «Guardar gasto».", i: "Check" },
     ],
