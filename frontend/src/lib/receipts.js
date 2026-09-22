@@ -15,23 +15,29 @@ function supabasePathFromUrl(s) {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
+// Ruta de Supabase Storage: la sube la app como `<user_id>/<uuid>.<ext>`, así que
+// la primera carpeta es siempre un UUID. Esto evita confundir rutas de otros
+// storages (p. ej. el backend OCR usa `gastocontrol/receipts/...`).
+const UUID_FOLDER_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\//i;
+
 function looksLikeStoragePath(s) {
   return (
     typeof s === "string" &&
     !s.startsWith("data:") &&
     !s.startsWith("http") &&
     !s.startsWith("/") &&
-    s.includes("/")
+    UUID_FOLDER_RE.test(s)
   );
 }
 
 // Extrae la ruta de storage de un recibo (tanto de una URL pública antigua como
 // de un `{ path }` nuevo). Devuelve null si no es un objeto de Supabase Storage.
 export function receiptStoragePath(r) {
-  const raw = (r && (r.path || r.url)) || null;
-  if (!raw) return null;
-  if (isSupabaseStorageUrl(raw)) return supabasePathFromUrl(raw);
-  if (looksLikeStoragePath(raw)) return raw;
+  const candidates = [r && r.path, r && r.url].filter(Boolean);
+  for (const raw of candidates) {
+    if (isSupabaseStorageUrl(raw)) return supabasePathFromUrl(raw);
+    if (looksLikeStoragePath(raw)) return raw;
+  }
   return null;
 }
 

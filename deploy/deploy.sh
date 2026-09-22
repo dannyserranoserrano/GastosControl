@@ -32,10 +32,20 @@ else
   exit 1
 fi
 
-echo "==> Compilando frontend (${PM}) con VITE_BACKEND_URL=https://${DOMAIN}"
 cd "$FRONTEND_DIR"
 [ -f .env ] || cp .env.example .env
-VITE_BACKEND_URL="https://${DOMAIN}" $PM build
+
+echo "==> Compilando frontend (${PM}) con VITE_BACKEND_URL=https://${DOMAIN}"
+if ! VITE_BACKEND_URL="https://${DOMAIN}" $PM build; then
+  # Fallback: en algunos entornos se pierde el bit de ejecución de node_modules.
+  # Se ejecuta vite con node y un esbuild propio con permisos.
+  echo "==> '${PM} build' falló; reintentando con node + esbuild temporal"
+  ESB="$(mktemp -d)/esbuild"
+  cp node_modules/@esbuild/linux-x64/bin/esbuild "$ESB" 2>/dev/null || true
+  chmod +x "$ESB" 2>/dev/null || true
+  ESBUILD_BINARY_PATH="$ESB" VITE_BACKEND_URL="https://${DOMAIN}" \
+    node node_modules/vite/bin/vite.js build
+fi
 
 echo "==> Desplegando ${FRONTEND_DIR}/dist -> ${WEB_ROOT}"
 $SUDO mkdir -p "$WEB_ROOT"
