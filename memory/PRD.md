@@ -81,7 +81,9 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Topes por categoría movidos a Ajustes → Categorías
 - [x] Botones de cabecera con scroll horizontal en móvil (Gastos e Informe)
 - [x] Logout con limpieza total del almacenamiento local del dispositivo (sin dejar rastro)
-- [x] Gestión de cuenta: cambiar contraseña y enlace de recuperación (email/contraseña) o ajustes del proveedor (Google/GitHub)
+- [x] Gestión de cuenta: cambiar contraseña (pidiendo la actual), enlace de recuperación (email/contraseña), ajustes del proveedor (Google/GitHub) y **cerrar sesión** desde el mismo menú
+- [x] Proyecto activo permanente (último usado): se eliminó «Todos los proyectos»
+- [x] Selector de proyecto en la cabecera (al pulsar el nombre): cambia de proyecto y abre el Panel
 
 ## Seguridad (2026-09)
 - [x] HTTPS obligatorio: el vhost `:80` redirige (301) y `:443` envía HSTS

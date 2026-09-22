@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { KeyRound, Mail, ShieldCheck, ExternalLink, AlertTriangle } from "lucide-react";
+import { KeyRound, Mail, ShieldCheck, ExternalLink, AlertTriangle, LogOut } from "lucide-react";
 import Turnstile, { turnstileEnabled } from "@/components/Turnstile";
 
 const PROVIDER_INFO = {
@@ -17,6 +17,7 @@ const PROVIDER_INFO = {
 
 function traducir(msg) {
   const m = String(msg || "").toLowerCase();
+  if (m.includes("invalid login credentials")) return "La contraseña actual no es correcta";
   if (m.includes("at least")) return "La contraseña debe tener al menos 6 caracteres";
   if (m.includes("should be different") || m.includes("different from")) {
     return "La nueva contraseña debe ser distinta de la actual";
@@ -32,7 +33,9 @@ function traducir(msg) {
 }
 
 export default function AccountDialog({ open, onOpenChange }) {
-  const { user, updatePassword, sendPasswordReset, passwordRecovery } = useAuth();
+  const { user, updatePassword, sendPasswordReset, passwordRecovery, signInWithPassword, signOut } =
+    useAuth();
+  const [currentPw, setCurrentPw] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [busy, setBusy] = useState(false);
@@ -42,8 +45,11 @@ export default function AccountDialog({ open, onOpenChange }) {
 
   useEffect(() => {
     if (!open) {
+      setCurrentPw("");
       setPw("");
       setPw2("");
+      setCaptchaToken(null);
+      setTurnstileNonce((n) => n + 1);
     }
   }, [open]);
 
@@ -55,6 +61,10 @@ export default function AccountDialog({ open, onOpenChange }) {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!currentPw) {
+      toast.error("Escribe tu contraseña actual");
+      return;
+    }
     if (pw.length < 6) {
       toast.error("La contraseña debe tener al menos 6 caracteres");
       return;
@@ -63,16 +73,25 @@ export default function AccountDialog({ open, onOpenChange }) {
       toast.error("Las contraseñas no coinciden");
       return;
     }
+    if (turnstileEnabled && !captchaToken) {
+      toast.error("Completa la verificación de seguridad");
+      return;
+    }
     setBusy(true);
     try {
+      // Verifica la contraseña actual reautenticando antes de cambiarla.
+      await signInWithPassword(user.email, currentPw, captchaToken);
       await updatePassword(pw);
       toast.success("Contraseña actualizada");
+      setCurrentPw("");
       setPw("");
       setPw2("");
     } catch (err) {
       toast.error(traducir(err?.message));
     } finally {
       setBusy(false);
+      setCaptchaToken(null);
+      setTurnstileNonce((n) => n + 1);
     }
   };
 
@@ -135,6 +154,17 @@ export default function AccountDialog({ open, onOpenChange }) {
               <p className="font-semibold text-[#1A1D20]">Cambiar contraseña</p>
             </div>
             <div className="space-y-1.5">
+              <Label>Contraseña actual</Label>
+              <Input
+                data-testid="input-current-password"
+                type="password"
+                autoComplete="current-password"
+                value={currentPw}
+                onChange={(e) => setCurrentPw(e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-1.5">
               <Label>Nueva contraseña</Label>
               <Input
                 data-testid="input-new-password"
@@ -159,6 +189,11 @@ export default function AccountDialog({ open, onOpenChange }) {
                 className="rounded-xl"
               />
             </div>
+            {turnstileEnabled && (
+              <div className="flex justify-center">
+                <Turnstile key={turnstileNonce} onVerify={setCaptchaToken} />
+              </div>
+            )}
             <Button
               type="submit"
               disabled={busy}
@@ -167,11 +202,6 @@ export default function AccountDialog({ open, onOpenChange }) {
             >
               {busy ? "Guardando…" : "Guardar contraseña"}
             </Button>
-            {turnstileEnabled && (
-              <div className="flex justify-center">
-                <Turnstile key={turnstileNonce} onVerify={setCaptchaToken} />
-              </div>
-            )}
             <button
               type="button"
               onClick={recover}
@@ -221,14 +251,26 @@ export default function AccountDialog({ open, onOpenChange }) {
           </div>
         )}
 
-        <div className="border-t border-[#E2DDD3] pt-4">
+        <div className="border-t border-[#E2DDD3] pt-4 flex gap-2">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="w-full rounded-xl border-[#E2DDD3]"
+            className="flex-1 rounded-xl border-[#E2DDD3]"
           >
             Cerrar
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              onOpenChange(false);
+              signOut();
+            }}
+            data-testid="btn-logout"
+            className="flex-1 rounded-xl border-[#E2DDD3] text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <LogOut className="w-4 h-4 mr-1" /> Salir
           </Button>
         </div>
       </DialogContent>

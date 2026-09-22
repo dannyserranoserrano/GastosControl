@@ -170,6 +170,16 @@ export function ProjectsProvider({ children }) {
     });
   }, []);
 
+  // Garantiza que siempre haya un proyecto activo (el último usado, guardado en
+  // localStorage). Si el activo ya no existe, cae al primero disponible.
+  useEffect(() => {
+    if (raw.length === 0) return;
+    const names = raw.map((p) => p.name);
+    if (!activeProject || !names.includes(activeProject)) {
+      setActiveProject(names[0]);
+    }
+  }, [raw, activeProject, setActiveProject]);
+
   const projects = raw.map((p) => p.name);
   const projectMeta = Object.fromEntries(
     raw.map((p) => [p.name, { description: p.description, color: p.color, icon: p.icon }])

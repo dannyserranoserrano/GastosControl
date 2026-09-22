@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import {
-  Home, Receipt, ScanLine, Compass, LogIn, LogOut, Images, BarChart3,
-  CalendarDays, Settings, ChevronDown, Menu, X, FolderKanban,
+  Home, Receipt, ScanLine, Compass, LogIn, Images, BarChart3,
+  CalendarDays, Settings, ChevronDown, Menu, X,
   Cloud, CloudOff, Server, HardDrive,
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
-import { useProjects } from "@/lib/projectsContext";
 import { useSyncStatus, TONES } from "@/lib/useSyncStatus";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
 import AccountDialog from "@/components/AccountDialog";
+import ProjectMenu from "@/components/ProjectMenu";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
@@ -72,27 +72,8 @@ function StatusPill({ status, className = "" }) {
   );
 }
 
-function ProjectPill({ activeProject, className = "" }) {
-  return (
-    <div
-      className={`items-center gap-2 text-xs px-3 py-1.5 rounded-full border border-[#E2DDD3] bg-white whitespace-nowrap ${className}`}
-      title={
-        activeProject
-          ? `Proyecto activo: ${activeProject}`
-          : "Sin proyecto activo: viendo todos los proyectos"
-      }
-    >
-      <FolderKanban className={`w-3.5 h-3.5 ${activeProject ? "text-[#D95D39]" : "text-[#5C626A]"}`} />
-      <span className={`font-medium truncate max-w-[140px] ${activeProject ? "text-[#1A1D20]" : "text-[#5C626A]"}`}>
-        {activeProject || "Todos los proyectos"}
-      </span>
-    </div>
-  );
-}
-
 export default function Header() {
-  const { user, isConfigured, signOut, loading, passwordRecovery } = useAuth();
-  const { activeProject } = useProjects();
+  const { user, isConfigured, loading, passwordRecovery } = useAuth();
   const sync = useSyncStatus();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -131,16 +112,6 @@ export default function Header() {
                 {user.user_metadata?.name || user.email}
               </span>
             </button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={signOut}
-              data-testid="btn-logout"
-              className="rounded-xl border-[#E2DDD3]"
-              title="Cerrar sesión"
-            >
-              <LogOut className="w-4 h-4" />
-            </Button>
           </div>
         ) : (
           <Link to="/login">
@@ -223,7 +194,7 @@ export default function Header() {
 
         {/* Acciones */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
-          <ProjectPill activeProject={activeProject} className="hidden md:flex" />
+          <ProjectMenu className="hidden md:flex" />
           <StatusPill status={sync} className="hidden xl:flex" />
 
           <Link to="/escanear" className="hidden sm:block">
@@ -322,7 +293,7 @@ export default function Header() {
                   Contexto
                 </p>
                 <div className="flex flex-col gap-2">
-                  <ProjectPill activeProject={activeProject} className="flex" />
+                  <ProjectMenu className="flex" />
                   <StatusPill status={sync} className="flex" />
                 </div>
               </div>

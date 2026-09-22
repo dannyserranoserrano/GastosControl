@@ -11,8 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { toast } from "sonner";
 import { FolderKanban, Plus, Trash2, Check, Pencil, X } from "lucide-react";
 
-const ALL = "__all__";
-
 function ColorDot({ color }) {
   const dot = (COLOR_MAP[color] || COLOR_MAP.stone).dot;
   return <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: dot }} aria-hidden />;
@@ -91,26 +89,29 @@ export default function ProjectSettings() {
         <p className="text-sm text-[#5C626A] mt-1 mb-4">
           Todo lo que hagas (gastos, presupuesto, categorías, estadísticas) se aplica al proyecto seleccionado.
         </p>
-        <Select value={activeProject || ALL} onValueChange={(v) => setActiveProject(v === ALL ? "" : v)}>
-          <SelectTrigger data-testid="select-project" className="rounded-xl w-full sm:w-[280px]">
-            <SelectValue placeholder="Todos los proyectos" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL} data-testid="project-opt-all">Todos los proyectos</SelectItem>
-            {projects.map((p) => {
-              const Icon = iconFor(projectMeta[p]?.icon);
-              return (
-                <SelectItem key={p} value={p} data-testid={`project-opt-${p}`}>
-                  <span className="inline-flex items-center gap-2">
-                    <Icon className="w-3.5 h-3.5" />
-                    <ColorDot color={projectMeta[p]?.color} />
-                    {p}
-                  </span>
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
+        {projects.length === 0 ? (
+          <p className="text-sm text-[#5C626A]">Aún no hay proyectos. Crea el primero más abajo.</p>
+        ) : (
+          <Select value={activeProject} onValueChange={setActiveProject}>
+            <SelectTrigger data-testid="select-project" className="rounded-xl w-full sm:w-[280px]">
+              <SelectValue placeholder="Selecciona un proyecto" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map((p) => {
+                const Icon = iconFor(projectMeta[p]?.icon);
+                return (
+                  <SelectItem key={p} value={p} data-testid={`project-opt-${p}`}>
+                    <span className="inline-flex items-center gap-2">
+                      <Icon className="w-3.5 h-3.5" />
+                      <ColorDot color={projectMeta[p]?.color} />
+                      {p}
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        )}
       </Card>
 
       <Card className="p-6 rounded-2xl border-[#E2DDD3] bg-white">
