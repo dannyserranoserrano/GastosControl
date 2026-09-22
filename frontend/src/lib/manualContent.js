@@ -92,6 +92,7 @@ export const MANUAL = [
     steps: [
       { t: "En Gastos pulsa «Recurrentes» y rellena proveedor, importe, categoría, día, frecuencia y mes de inicio.", i: "Repeat" },
       { t: "Se generan solos al abrir la app en los meses que tocan.", i: "Zap" },
+      { t: "Con el lápiz editas una plantilla (proveedor, importe, día, frecuencia…).", i: "Pencil" },
       { t: "Puedes pausarlos, eliminarlos o generarlos a mano con el botón del rayo.", i: "Pause" },
     ],
   },

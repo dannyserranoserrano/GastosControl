@@ -9,7 +9,7 @@ import {
   LayoutDashboard, ScanLine, Images, Wallet, Tags, BarChart3, CalendarDays,
   Lock, PiggyBank, Upload, Sparkles, Copy, Bell, Database, Moon,
   LogIn, ChevronDown, Plus, Type, Save, Check, Layers, Target, Percent,
-  Zap, Pause, Download, ZoomIn, KeyRound, Unlock, WifiOff, FileText,
+  Zap, Pause, Download, ZoomIn, KeyRound, Unlock, WifiOff, FileText, Pencil,
 } from "lucide-react";
 
 const ICONS = {
@@ -17,7 +17,7 @@ const ICONS = {
   ScanLine, Images, Wallet, Tags, BarChart3, CalendarDays, Lock, PiggyBank,
   Upload, Sparkles, Copy, Bell, Database, Moon,
   LogIn, ChevronDown, Plus, Type, Save, Check, Layers, Target, Percent,
-  Zap, Pause, Download, ZoomIn, KeyRound, Unlock, WifiOff, FileText,
+  Zap, Pause, Download, ZoomIn, KeyRound, Unlock, WifiOff, FileText, Pencil,
 };
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];

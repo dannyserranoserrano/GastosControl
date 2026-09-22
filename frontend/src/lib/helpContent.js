@@ -8,6 +8,17 @@
 
 export const HELP_ITEMS = [
   {
+    id: "recurrentes-editar",
+    icon: "Repeat",
+    title: "Editar plantillas recurrentes",
+    updated: "2026-09-22",
+    body: [
+      "En Gastos → Recurrentes, cada plantilla tiene un botón de lápiz para editarla.",
+      "Puedes cambiar proveedor, importe, categoría, proyecto, notas, día, frecuencia y mes de inicio.",
+      "Al guardar se actualiza la plantilla; las generaciones ya hechas se conservan.",
+    ],
+  },
+  {
     id: "adjuntos-pdf",
     icon: "FileText",
     title: "Adjuntar y escanear PDFs",

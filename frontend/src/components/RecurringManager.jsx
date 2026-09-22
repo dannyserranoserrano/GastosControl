@@ -9,13 +9,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { loadTemplates, saveTemplates, templateId, ymOf, FREQUENCIES, freqLabel } from "../lib/recurring";
 import { generateRecurringNow } from "../lib/useRecurring";
 import { toast } from "sonner";
-import { Repeat, Plus, Trash2, Zap } from "lucide-react";
+import { Repeat, Plus, Trash2, Zap, Pencil, Check, X } from "lucide-react";
 
 export default function RecurringManager({ onChanged }) {
   const { categories } = useCategories();
   const { activeProject } = useProjects();
   const [open, setOpen] = useState(false);
   const [templates, setTemplates] = useState(() => loadTemplates());
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     vendor: "",
     amount: "",
@@ -33,7 +34,41 @@ export default function RecurringManager({ onChanged }) {
     saveTemplates(next);
   };
 
-  const add = () => {
+  const emptyForm = () => ({
+    vendor: "",
+    amount: "",
+    category: "General",
+    project: "",
+    notes: "",
+    day: "1",
+    freqChoice: "1",
+    freqMonths: "5",
+    start: ymOf(),
+  });
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm(emptyForm());
+  };
+
+  const startEdit = (t) => {
+    const freq = Number(t.freq) || 1;
+    const isPreset = FREQUENCIES.some((f) => f.value === freq);
+    setEditingId(t.id);
+    setForm({
+      vendor: t.vendor || "",
+      amount: t.amount != null ? String(t.amount) : "",
+      category: t.category || "General",
+      project: t.project || "",
+      notes: t.notes || "",
+      day: String(t.day || 1),
+      freqChoice: isPreset ? String(freq) : "custom",
+      freqMonths: isPreset ? "5" : String(freq),
+      start: t.start || ymOf(),
+    });
+  };
+
+  const save = () => {
     if (!form.vendor.trim()) {
       toast.error("Indica el proveedor o concepto");
       return;
@@ -48,8 +83,7 @@ export default function RecurringManager({ onChanged }) {
       form.freqChoice === "custom"
         ? Math.min(120, Math.max(1, Number(form.freqMonths) || 1))
         : Math.max(1, Number(form.freqChoice) || 1);
-    const tpl = {
-      id: templateId(),
+    const base = {
       vendor: form.vendor.trim(),
       amount,
       category: form.category,
@@ -57,24 +91,25 @@ export default function RecurringManager({ onChanged }) {
       notes: form.notes.trim(),
       day,
       freq,
-      active: true,
       start: form.start || ymOf(),
-      generated: [],
-      created_at: new Date().toISOString(),
     };
-    persist([...templates, tpl]);
-    setForm({
-      vendor: "",
-      amount: "",
-      category: "General",
-      project: "",
-      notes: "",
-      day: "1",
-      freqChoice: "1",
-      freqMonths: "5",
-      start: ymOf(),
-    });
-    toast.success("Gasto recurrente añadido");
+
+    if (editingId) {
+      persist(templates.map((t) => (t.id === editingId ? { ...t, ...base } : t)));
+      toast.success("Recurrente actualizado");
+      cancelEdit();
+    } else {
+      const tpl = {
+        id: templateId(),
+        ...base,
+        active: true,
+        generated: [],
+        created_at: new Date().toISOString(),
+      };
+      persist([...templates, tpl]);
+      setForm(emptyForm());
+      toast.success("Gasto recurrente añadido");
+    }
   };
 
   const remove = (id) => persist(templates.filter((t) => t.id !== id));
@@ -102,7 +137,13 @@ export default function RecurringManager({ onChanged }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) cancelEdit();
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           data-testid="btn-recurring"
@@ -239,14 +280,41 @@ export default function RecurringManager({ onChanged }) {
               />
             </div>
           </div>
-          <div className="flex justify-end">
-            <Button
-              data-testid="btn-add-recurring"
-              onClick={add}
-              className="bg-[#D95D39] hover:bg-[#C24C2A] text-white rounded-xl"
-            >
-              <Plus className="w-4 h-4 mr-2" /> Añadir
-            </Button>
+          <div className="flex items-center justify-between gap-2">
+            {editingId ? (
+              <span className="text-xs text-[#D95D39] inline-flex items-center gap-1">
+                <Pencil className="w-3.5 h-3.5" /> Editando una plantilla
+              </span>
+            ) : (
+              <span />
+            )}
+            <div className="flex gap-2">
+              {editingId && (
+                <Button
+                  variant="outline"
+                  onClick={cancelEdit}
+                  data-testid="btn-cancel-recurring"
+                  className="rounded-xl border-[#E2DDD3]"
+                >
+                  <X className="w-4 h-4 mr-1" /> Cancelar
+                </Button>
+              )}
+              <Button
+                data-testid="btn-add-recurring"
+                onClick={save}
+                className="bg-[#D95D39] hover:bg-[#C24C2A] text-white rounded-xl"
+              >
+                {editingId ? (
+                  <>
+                    <Check className="w-4 h-4 mr-2" /> Guardar
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" /> Añadir
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -263,7 +331,11 @@ export default function RecurringManager({ onChanged }) {
                   key={t.id}
                   data-testid={`recurring-row-${t.id}`}
                   className={`flex items-center gap-3 rounded-xl border p-3 ${
-                    t.active ? "border-[#E2DDD3] bg-white" : "border-[#E2DDD3] bg-[#FAF8F5] opacity-70"
+                    editingId === t.id
+                      ? "border-[#D95D39] bg-[#FFF8F4]"
+                      : t.active
+                        ? "border-[#E2DDD3] bg-white"
+                        : "border-[#E2DDD3] bg-[#FAF8F5] opacity-70"
                   }`}
                 >
                   <div className="min-w-0 flex-1">
@@ -288,6 +360,16 @@ export default function RecurringManager({ onChanged }) {
                   >
                     {t.active ? "Activo" : "Pausado"}
                   </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    data-testid={`btn-edit-recurring-${t.id}`}
+                    onClick={() => (editingId === t.id ? cancelEdit() : startEdit(t))}
+                    className="rounded-lg text-[#5C626A]"
+                    title="Editar"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"

@@ -52,6 +52,7 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Importar gastos desde CSV (parseo flexible, previsualización, validación y omisión de duplicados)
 - [x] Gastos recurrentes (plantillas que se generan automáticamente, con pausa y generación manual)
 - [x] Frecuencia de los recurrentes: mensual, bimestral, trimestral, cuatrimestral, semestral, anual y personalizada (cada X meses), con mes de inicio elegible
+- [x] Editar plantillas recurrentes existentes (proveedor, importe, categoría, proyecto, día, frecuencia y mes de inicio)
 - [x] Modo oscuro (toggle en el header, persistente y con opción de seguir al sistema)
 - [x] Presupuestos por periodo (semanal/mensual/anual): progreso, alertas y proyecciones sobre el periodo activo
 - [x] Proyectos como espacios de trabajo: selector global; cada proyecto tiene sus propios gastos, presupuesto (total, categorías y periodo) y estadísticas
@@ -106,7 +107,6 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 
 ## Backlog (sugerencias para más adelante)
 Pequeñas:
-- Editar plantillas recurrentes existentes (hoy solo crear/borrar/pausar)
 - Estado de pago en facturas (pagado/pendiente) + fecha de vencimiento y recordatorio
 - Duplicar/plantilla de gasto y edición masiva (categoría/proyecto a varios gastos)
 - Exportar a Excel (XLSX) además de CSV
