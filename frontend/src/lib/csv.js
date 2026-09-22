@@ -152,6 +152,10 @@ export function mapRowsToExpenses(rows) {
 
   const dataRows = hasHeader ? rows.slice(1) : rows;
   let idx;
+  // Formato propio (export de GastoControl o posición fija): el importe siempre es
+  // un gasto aunque sea positivo. En un extracto con "Importe" con signo, el
+  // positivo es un ingreso (se omite).
+  const ownFormat = !hasHeader || findColumn(first, "category") > -1;
   if (hasHeader) {
     idx = {
       date: findColumn(first, "date"),
@@ -166,6 +170,7 @@ export function mapRowsToExpenses(rows) {
   } else {
     idx = { date: 0, vendor: 1, amount: 2, debit: -1, credit: -1, category: 3, project: 4, notes: 5 };
   }
+  const hasDebitCredit = idx.debit > -1 || idx.credit > -1;
 
   const records = dataRows.map((raw, i) => {
     const get = (k) => (idx[k] > -1 && raw[idx[k]] !== undefined ? String(raw[idx[k]]).trim() : "");
@@ -184,6 +189,9 @@ export function mapRowsToExpenses(rows) {
     } else if (amount < 0) {
       // Importe negativo = cargo
       amount = Math.abs(amount);
+    } else if (amount > 0 && !ownFormat && !hasDebitCredit) {
+      // Extracto con importe con signo: positivo = ingreso
+      income = true;
     }
     const errors = [];
     if (!date) errors.push("fecha inválida");

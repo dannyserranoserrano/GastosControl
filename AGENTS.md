@@ -195,7 +195,10 @@ yarn install
 yarn dev        # servidor de desarrollo (http://localhost:3000)
 yarn build      # build de producción a dist/
 yarn preview    # sirve el build
+yarn lint       # ESLint (flat config)
+yarn test       # Vitest (tests/**.test.js)
 ```
+- CI en `.github/workflows/ci.yml` (lint + test + build en cada push/PR).
 - Requiere **Node >= 18** (Vite 6). Verificado OK con Node 24.
 - El alias `@/` se resuelve en `vite.config.js` (alias `@` → `src`) y en `jsconfig.json` (IDE).
 
@@ -273,6 +276,7 @@ uvicorn server:app --reload
 - **Varios tickets por gasto (imágenes o PDF)**: cada gasto guarda `receipts: [{ path, url }]` (además de `receipt_path`/`receipt_url` del primero, por compatibilidad). `ExpenseForm` permite adjuntar/eliminar varias **imágenes o PDFs** (las imágenes se redimensionan a data-URL en local; ambos se suben a Storage en Supabase). `ReceiptImage` pinta miniaturas (los PDF como ficha con icono) y `ReceiptViewer` los abre a tamaño completo (imagen o PDF en iframe). La lista de `/gastos` muestra la primera con contador y previsualiza todas; la galería agrupa varias por gasto. Requiere la columna `expenses.receipts` (jsonb) en Supabase (con fallback si falta).
 - **Galería de tickets** (`/galeria`): grid de boletos escaneados con búsqueda, filtro por categoría, **orden por fecha (recientes/antiguos) o categoría (A-Z)**, vista previa con zoom y descarga.
 - **Responsive (móvil)**: las filas de acciones de `/gastos` e `/informe` usan scroll horizontal (`overflow-x-auto` + hijos sin encoger) para que los botones de la cabecera no se salgan en pantallas estrechas, igual que las pestañas de Ajustes.
+- **Rendimiento y calidad**: imágenes con `loading="lazy"`/`decoding="async"` y resolución diferida (`IntersectionObserver`); URLs firmadas de Supabase cacheadas en `localStorage` (`gastocontrol:signed_urls`); en modo local los ficheros se guardan aparte en IndexedDB (`gastocontrol:file:*`) y el gasto solo referencia `local:<id>`/`localpdf:<id>`; `/gastos` hace una sola petición por proyecto y filtra en cliente; ESLint (flat) + Vitest + CI; se eliminaron dependencias sin usar.
 - El backend FastAPI (opcional) pasó un smoke test previo (ver `test_reports/iteration_1.json`).
 
 ### Pendiente

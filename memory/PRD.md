@@ -107,6 +107,14 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Sin secretos en repo ni en el bundle; sin source maps; el SPA fallback no filtra archivos
 - [x] Scripts de despliegue `deploy/deploy.sh` (frontend) y `deploy/install-apache.sh` (vhosts)
 
+## Calidad y rendimiento (2026-09)
+- [x] Imágenes de tickets: `loading="lazy"`, `decoding="async"`, dimensiones y resolución diferida (IntersectionObserver)
+- [x] Caché persistente de URLs firmadas de Supabase (reuso entre recargas)
+- [x] Modo local: los ficheros se guardan aparte en IndexedDB (no viajan en el listado)
+- [x] `/gastos`: una sola petición por proyecto y filtrado en cliente
+- [x] ESLint (flat config) + Vitest + CI (GitHub Actions)
+- [x] Limpieza de código muerto y ~35 dependencias sin usar
+
 ## Backlog (sugerencias para más adelante)
 Pequeñas:
 - Estado de pago en facturas (pagado/pendiente) + fecha de vencimiento y recordatorio
