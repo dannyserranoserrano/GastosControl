@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import {
   Home, Receipt, ScanLine, Compass, LogIn, Images, BarChart3,
-  CalendarDays, Settings, ChevronDown, Menu, X,
+  CalendarDays, Settings, ChevronDown, Menu, X, HelpCircle,
   Cloud, CloudOff, Server, HardDrive,
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
@@ -41,6 +41,12 @@ const NAV = [
     to: "/ajustes",
     icon: Settings,
     tid: "nav-settings",
+  },
+  {
+    label: "Ayuda",
+    to: "/ayuda",
+    icon: HelpCircle,
+    tid: "nav-help",
   },
 ];
 

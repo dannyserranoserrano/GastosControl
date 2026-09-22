@@ -18,6 +18,7 @@ const Login = lazy(() => import("@/pages/Login"));
 const Gallery = lazy(() => import("@/pages/Gallery"));
 const MonthlyReport = lazy(() => import("@/pages/MonthlyReport"));
 const Calendar = lazy(() => import("@/pages/Calendar"));
+const Help = lazy(() => import("@/pages/Help"));
 
 function PageLoader() {
   return (
@@ -47,6 +48,7 @@ function App() {
                   <Route path="/galeria" element={<Gallery />} />
                   <Route path="/informe" element={<MonthlyReport />} />
                   <Route path="/calendario" element={<Calendar />} />
+                  <Route path="/ayuda" element={<Help />} />
                   <Route path="/login" element={<Login />} />
                 </Routes>
               </Suspense>
