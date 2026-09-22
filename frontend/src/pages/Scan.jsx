@@ -13,10 +13,13 @@ export default function Scan() {
   const { activeProject } = useProjects();
   const [image, setImage] = useState(null);      // File
   const [previewUrl, setPreviewUrl] = useState(null);
-  const isPdf = Boolean(image && image.type === "application/pdf");
+  const isPdf = Boolean(
+    image && (image.type === "application/pdf" || /\.pdf$/i.test(image.name || ""))
+  );
   const [scanning, setScanning] = useState(false);
   const [extracted, setExtracted] = useState(null); // extracted data
   const [receiptPath, setReceiptPath] = useState(null);
+  const [scannedReceipt, setScannedReceipt] = useState(null);
   const fileRef = useRef();
   const cameraRef = useRef();
   const navigate = useNavigate();
@@ -44,6 +47,11 @@ export default function Scan() {
       const data = await scanReceipt(fd);
       setExtracted(data.extracted);
       setReceiptPath(data.receipt_path);
+      setScannedReceipt(
+        data.receipt_path
+          ? { path: data.receipt_path, url: data.receipt_url || data.receipt_path }
+          : null
+      );
       toast.success(USE_REMOTE ? "Ticket analizado con IA" : "Imagen adjuntada");
     } catch (e) {
       toast.error("No se pudo analizar el ticket");
@@ -77,6 +85,7 @@ export default function Scan() {
       setPreviewUrl(null);
       setExtracted(null);
       setReceiptPath(null);
+      setScannedReceipt(null);
       navigate("/gastos");
     } catch {
       toast.error("Error al guardar el gasto");
@@ -88,6 +97,7 @@ export default function Scan() {
     setPreviewUrl(null);
     setExtracted(null);
     setReceiptPath(null);
+    setScannedReceipt(null);
   };
 
   return (
@@ -230,6 +240,7 @@ export default function Scan() {
                   category: extracted.category || "General",
                   project: activeProject || "",
                   notes: extracted.notes || "",
+                  receipts: scannedReceipt ? [scannedReceipt] : [],
                 }}
                 onSubmit={save}
                 submitLabel="Guardar gasto"
