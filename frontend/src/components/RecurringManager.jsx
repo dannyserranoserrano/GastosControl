@@ -366,6 +366,7 @@ export default function RecurringManager({ onChanged }) {
                     data-testid={`btn-edit-recurring-${t.id}`}
                     onClick={() => (editingId === t.id ? cancelEdit() : startEdit(t))}
                     className="rounded-lg text-[#5C626A]"
+                    aria-label="Editar recurrente"
                     title="Editar"
                   >
                     <Pencil className="w-4 h-4" />
@@ -376,6 +377,7 @@ export default function RecurringManager({ onChanged }) {
                     data-testid={`btn-generate-recurring-${t.id}`}
                     onClick={() => generateNow(t)}
                     className="rounded-lg"
+                    aria-label="Generar el periodo actual"
                     title="Generar el periodo actual"
                   >
                     <Zap className="w-4 h-4" />
@@ -386,6 +388,7 @@ export default function RecurringManager({ onChanged }) {
                     data-testid={`btn-delete-recurring-${t.id}`}
                     onClick={() => remove(t.id)}
                     className="rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50"
+                    aria-label="Eliminar recurrente"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

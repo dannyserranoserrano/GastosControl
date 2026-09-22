@@ -145,6 +145,7 @@ export default function CategoryManager() {
                     <button
                       data-testid={`btn-delete-cat-${c.name}`}
                       className="w-6 h-6 rounded-full hover:bg-white/70 flex items-center justify-center"
+                      aria-label={`Eliminar categoría ${c.name}`}
                       title="Eliminar categoría"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -215,6 +216,7 @@ export default function CategoryManager() {
                   key={n}
                   type="button"
                   data-testid={`icon-opt-${n}`}
+                  aria-label={`Icono ${n}`}
                   onClick={() => setIcon(n)}
                   className={`w-9 h-9 rounded-lg border flex items-center justify-center transition-all ${
                     active
@@ -239,6 +241,7 @@ export default function CategoryManager() {
                   key={c}
                   type="button"
                   data-testid={`color-opt-${c}`}
+                  aria-label={`Color ${c}`}
                   onClick={() => setColor(c)}
                   className={`w-9 h-9 rounded-lg border-2 transition-all ${
                     active ? "border-[#1A1D20] scale-110" : "border-transparent"

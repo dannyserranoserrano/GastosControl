@@ -38,6 +38,7 @@ export default function Settings() {
         {/* Navegación de secciones */}
         <nav
           data-testid="settings-tabs"
+          aria-label="Secciones de ajustes"
           className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0 mb-2 md:mb-0 md:sticky md:top-24"
         >
           {TABS.map((t) => {

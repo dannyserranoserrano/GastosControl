@@ -233,6 +233,7 @@ export default function ProjectSettings() {
                       key={n}
                       type="button"
                       data-testid={`project-icon-${n}`}
+                      aria-label={`Icono ${n}`}
                       onClick={() => setForm({ ...form, icon: n })}
                       className={`w-8 h-8 rounded-lg border flex items-center justify-center ${
                         activeIcon ? "bg-[#1E293B] text-white border-[#1E293B]" : "bg-white text-[#1A1D20] border-[#E2DDD3]"
@@ -252,8 +253,9 @@ export default function ProjectSettings() {
                   <button
                     key={c}
                     type="button"
-                    data-testid={`project-color-${c}`}
-                    onClick={() => setForm({ ...form, color: c })}
+                      data-testid={`project-color-${c}`}
+                      aria-label={`Color ${c}`}
+                      onClick={() => setForm({ ...form, color: c })}
                     className={`w-8 h-8 rounded-lg border-2 ${form.color === c ? "border-[#1A1D20] scale-110" : "border-transparent"}`}
                     style={{ backgroundColor: COLOR_MAP[c].dot }}
                     title={c}

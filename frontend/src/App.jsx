@@ -35,9 +35,16 @@ function App() {
         <AuthProvider>
           <ProjectsProvider>
             <CategoriesProvider>
+              <a
+                href="#main"
+                className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:rounded-lg focus:border focus:border-[#E2DDD3] focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-medium"
+              >
+                Saltar al contenido
+              </a>
               <Header />
               <InstallPrompt />
               <MigrationBanner />
+              <main id="main">
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
@@ -52,6 +59,7 @@ function App() {
                   <Route path="/login" element={<Login />} />
                 </Routes>
               </Suspense>
+              </main>
               <QuickAddButton />
               <Toaster position="top-right" richColors closeButton />
             </CategoriesProvider>

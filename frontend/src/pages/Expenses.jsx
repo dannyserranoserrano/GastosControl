@@ -314,6 +314,7 @@ export default function Expenses() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5C626A]" />
             <Input
               data-testid="input-search"
+              aria-label="Buscar por proveedor o notas"
               placeholder="Buscar por proveedor o notas…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -500,6 +501,7 @@ export default function Expenses() {
                   className="w-14 h-14 rounded-xl bg-[#F2EFE9] border border-[#E2DDD3] flex items-center justify-center overflow-hidden shrink-0 relative"
                   onClick={openPreview}
                   data-testid={`btn-preview-${e.id}`}
+                  aria-label={receiptList.length ? `Ver ticket(s) (${receiptList.length})` : "Sin imagen"}
                   title={receiptList.length ? `Ver ticket(s) (${receiptList.length})` : "Sin imagen"}
                 >
                   {firstReceipt ? (
@@ -563,6 +565,7 @@ export default function Expenses() {
                     onClick={() => setEditItem(e)}
                     disabled={isLocked(e.date)}
                     className="rounded-lg disabled:opacity-40"
+                    aria-label="Editar gasto"
                     title={isLocked(e.date) ? "Mes cerrado" : "Editar"}
                   >
                     <Pencil className="w-4 h-4" />
@@ -574,6 +577,7 @@ export default function Expenses() {
                     onClick={() => duplicate(e)}
                     disabled={isLocked(e.date)}
                     className="rounded-lg disabled:opacity-40"
+                    aria-label="Duplicar gasto"
                     title={isLocked(e.date) ? "Mes cerrado" : "Duplicar gasto"}
                   >
                     <CopyPlus className="w-4 h-4" />
@@ -585,6 +589,7 @@ export default function Expenses() {
                     onClick={() => remove(e.id)}
                     disabled={isLocked(e.date)}
                     className="rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-40"
+                    aria-label="Eliminar gasto"
                     title={isLocked(e.date) ? "Mes cerrado" : "Eliminar"}
                   >
                     <Trash2 className="w-4 h-4" />

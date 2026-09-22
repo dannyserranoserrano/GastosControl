@@ -152,7 +152,7 @@ export default function Header() {
 
         {/* Navegación principal */}
         <div className="hidden lg:flex flex-1 justify-center">
-          <nav className="flex items-center gap-1 bg-white border border-[#E2DDD3] rounded-xl p-1 shadow-sm">
+          <nav aria-label="Navegación principal" className="flex items-center gap-1 bg-white border border-[#E2DDD3] rounded-xl p-1 shadow-sm">
           {NAV.map((item) =>
             item.children ? (
               <DropdownMenu key={item.label}>
@@ -233,8 +233,13 @@ export default function Header() {
 
       {/* Menú móvil (drawer) */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={closeMobile} />
+        <div
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menú de navegación"
+        >
+          <div className="absolute inset-0 bg-black/40" aria-hidden="true" onClick={closeMobile} />
           <div className="absolute right-0 top-0 h-full w-[84%] max-w-xs bg-white border-l border-[#E2DDD3] overflow-y-auto p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -248,7 +253,7 @@ export default function Header() {
               </Button>
             </div>
 
-            <nav className="space-y-1">
+            <nav aria-label="Navegación principal" className="space-y-1">
               {NAV.map((item) =>
                 item.children ? (
                   <div key={item.label} className="pt-1">

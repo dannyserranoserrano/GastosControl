@@ -147,6 +147,7 @@ export default function Gallery() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5C626A]" />
             <Input
               data-testid="gallery-search"
+              aria-label="Buscar tickets por proveedor o notas"
               placeholder="Buscar por proveedor o notas…"
               value={q}
               onChange={(e) => setQ(e.target.value)}

@@ -212,6 +212,7 @@ export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar"
                 onClick={() => removeReceipt(i)}
                 data-testid={`btn-remove-receipt-${i}`}
                 className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white text-xs flex items-center justify-center hover:bg-black/80"
+                aria-label="Quitar imagen"
                 title="Quitar imagen"
               >
                 ×
@@ -227,6 +228,7 @@ export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar"
               accept="image/*,application/pdf"
               multiple
               className="hidden"
+              aria-label="Añadir imágenes o PDFs"
               data-testid="input-receipts"
               onChange={(e) => {
                 addReceipts(e.target.files);

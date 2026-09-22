@@ -114,6 +114,8 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] `/gastos`: una sola petición por proyecto y filtrado en cliente
 - [x] ESLint (flat config) + Vitest + CI (GitHub Actions)
 - [x] Limpieza de código muerto y ~35 dependencias sin usar
+- [x] Utilidades de fecha/texto centralizadas (`lib/dates.js`, `lib/text.js`)
+- [x] Accesibilidad básica: enlace «Saltar al contenido», `<main>`, `aria-label` en botones solo-icono, navegación y diálogo móvil
 
 ## Backlog (sugerencias para más adelante)
 Pequeñas:

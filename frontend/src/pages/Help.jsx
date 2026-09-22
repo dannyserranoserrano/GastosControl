@@ -72,7 +72,7 @@ export default function Help() {
       </div>
 
       {/* Pestañas */}
-      <nav data-testid="help-tabs" className="flex gap-1 overflow-x-auto pb-1">
+      <nav data-testid="help-tabs" aria-label="Secciones de ayuda" className="flex gap-1 overflow-x-auto pb-1">
         {TABS.map((t) => {
           const isActive = tab === t.id;
           return (
@@ -99,6 +99,7 @@ export default function Help() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5C626A]" />
           <Input
             data-testid="help-search"
+            aria-label="Buscar en la ayuda"
             placeholder={tab === "manual" ? "Buscar en el manual…" : "Buscar en las novedades…"}
             value={q}
             onChange={(e) => setQ(e.target.value)}
