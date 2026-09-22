@@ -3,6 +3,7 @@ import { dbGet, dbSet, dbDel, localFileKey } from "./storage";
 import { normalizePeriod, periodRange } from "./period";
 import { csvSafe } from "./csv";
 import { fileToDataUrl } from "./imageFile";
+import { round2, sanitizeCategoryBudgets } from "./budget";
 
 const K = {
   categories: "gastocontrol:categories",
@@ -26,10 +27,6 @@ function fail(status, detail) {
   const err = new Error(detail || "Error");
   err.response = { status, data: { detail } };
   return err;
-}
-
-function round2(n) {
-  return Math.round((Number(n) || 0) * 100) / 100;
 }
 
 async function readCategories(project) {
@@ -82,17 +79,6 @@ async function readBudget(project) {
     period: normalizePeriod(src.period),
     project: proj,
   };
-}
-
-function sanitizeCategoryBudgets(raw) {
-  const out = {};
-  if (raw && typeof raw === "object") {
-    for (const [name, value] of Object.entries(raw)) {
-      const n = Number(value);
-      if (Number.isFinite(n) && n >= 0) out[name] = round2(n);
-    }
-  }
-  return out;
 }
 
 const sortOtrosLast = (a, b) => {

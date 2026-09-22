@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { DEFAULT_CATEGORIES } from "./constants";
 import { downloadCsv } from "./localBackend";
 import { fileToDataUrl, dataUrlToBlob } from "./imageFile";
+import { round2, sanitizeCategoryBudgets } from "./budget";
 import { normalizePeriod, periodRange } from "./period";
 
 function uid() {
@@ -13,10 +14,6 @@ function uid() {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function round2(n) {
-  return Math.round((Number(n) || 0) * 100) / 100;
 }
 
 function fail(status, detail) {
@@ -365,17 +362,6 @@ async function getBudget(user, project) {
     period: normalizePeriod(src.period),
     project: proj,
   };
-}
-
-function sanitizeCategoryBudgets(raw) {
-  const out = {};
-  if (raw && typeof raw === "object") {
-    for (const [name, value] of Object.entries(raw)) {
-      const n = Number(value);
-      if (Number.isFinite(n) && n >= 0) out[name] = round2(n);
-    }
-  }
-  return out;
 }
 
 async function upsertBudgetRow(doc, { requireProjects = false } = {}) {
