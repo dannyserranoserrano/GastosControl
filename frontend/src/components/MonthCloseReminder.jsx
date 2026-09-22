@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { toast } from "sonner";
 import { Lock, X } from "lucide-react";
 
-const pad = (n) => String(n).padStart(2, "0");
+import { pad } from "@/lib/dates";
 
 function monthName(ym) {
   const [y, m] = ym.split("-").map(Number);

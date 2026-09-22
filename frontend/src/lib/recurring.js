@@ -1,6 +1,6 @@
 const KEY = "gastocontrol:recurring";
 
-const pad = (n) => String(n).padStart(2, "0");
+import { pad } from "@/lib/dates";
 
 // Cada cuánto se repite el recibo (intervalo en meses).
 export const FREQUENCIES = [

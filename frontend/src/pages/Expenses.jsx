@@ -21,7 +21,7 @@ import { loadClosed } from "../lib/closedMonths";
 import { toast } from "sonner";
 import { Plus, Download, Search, Trash2, Pencil, ImageIcon, Copy, CopyPlus, Calendar, X, Lock } from "lucide-react";
 
-const pad = (n) => String(n).padStart(2, "0");
+import { pad } from "@/lib/dates";
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 function datePresets(today = new Date()) {

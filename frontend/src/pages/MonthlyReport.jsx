@@ -13,14 +13,7 @@ import { normalizePeriod } from "../lib/period";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
-const MONTHS = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
-
-function monthKey(y, m) {
-  return `${y}-${String(m + 1).padStart(2, "0")}`;
-}
+import { MONTHS, monthKey } from "@/lib/dates";
 
 function getMonthName(ym) {
   const [y, m] = ym.split("-").map(Number);

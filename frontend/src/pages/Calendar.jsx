@@ -7,13 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import MonthCalendar from "../components/MonthCalendar";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const MONTHS = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
-
-const pad = (n) => String(n).padStart(2, "0");
-const monthKey = (y, m) => `${y}-${pad(m + 1)}`;
+import { MONTHS, monthKey } from "@/lib/dates";
 
 function getMonthName(ym) {
   const [y, m] = ym.split("-").map(Number);

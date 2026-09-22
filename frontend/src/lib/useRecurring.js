@@ -3,7 +3,7 @@ import { api } from "./api";
 import { toast } from "sonner";
 import { loadTemplates, saveTemplates, pendingFor, isDueMonth } from "./recurring";
 
-const pad = (n) => String(n).padStart(2, "0");
+import { pad } from "@/lib/dates";
 
 /**
  * Genera el recurrente para el mes actual si le toca y no se ha generado ya.

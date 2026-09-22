@@ -1,13 +1,6 @@
-const RULES_KEY = "gastocontrol:auto_rules";
+import { normalizeText as normalize } from "./text";
 
-function normalize(str) {
-  return String(str || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]/g, "")
-    .trim();
-}
+const RULES_KEY = "gastocontrol:auto_rules";
 
 export function loadRules() {
   try {

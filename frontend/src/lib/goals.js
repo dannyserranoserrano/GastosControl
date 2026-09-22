@@ -1,6 +1,6 @@
 const KEY = "gastocontrol:goals";
 
-const pad = (n) => String(n).padStart(2, "0");
+import { pad } from "@/lib/dates";
 
 export function todayISO() {
   const d = new Date();

@@ -6,7 +6,7 @@ import CategoryBadge from "./CategoryBadge";
 import { CalendarDays } from "lucide-react";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-const pad = (n) => String(n).padStart(2, "0");
+import { pad } from "@/lib/dates";
 
 export default function MonthCalendar({ month, expenses }) {
   const [selectedDay, setSelectedDay] = useState(null);

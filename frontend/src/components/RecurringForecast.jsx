@@ -6,7 +6,7 @@ import { Progress } from "./ui/progress";
 import { loadTemplates, isDueMonth, freqLabel } from "../lib/recurring";
 import { Repeat, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 
-const pad = (n) => String(n).padStart(2, "0");
+import { pad } from "@/lib/dates";
 
 export default function RecurringForecast({ reloadKey }) {
   const { activeProject } = useProjects();

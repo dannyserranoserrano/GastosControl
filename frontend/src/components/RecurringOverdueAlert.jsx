@@ -8,7 +8,7 @@ import { Button } from "./ui/button";
 import { toast } from "sonner";
 import { AlertTriangle, Zap } from "lucide-react";
 
-const pad = (n) => String(n).padStart(2, "0");
+import { pad } from "@/lib/dates";
 
 export default function RecurringOverdueAlert({ onGenerated }) {
   const { activeProject } = useProjects();

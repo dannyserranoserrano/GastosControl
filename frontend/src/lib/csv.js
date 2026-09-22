@@ -63,13 +63,7 @@ export function parseCsv(text, delimiter) {
   return rows.filter((r) => r.some((v) => String(v).trim() !== ""));
 }
 
-function norm(s) {
-  return String(s || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]/g, "");
-}
+import { normalizeText as norm } from "./text";
 
 const ALIASES = {
   date: ["fecha", "date", "dia", "fechagasto", "fechavalor", "fechaoperacion", "fechamovimiento", "fechacontable"],

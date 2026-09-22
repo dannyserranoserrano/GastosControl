@@ -1,4 +1,4 @@
-const pad = (n) => String(n).padStart(2, "0");
+import { pad } from "@/lib/dates";
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 export const PERIODS = [

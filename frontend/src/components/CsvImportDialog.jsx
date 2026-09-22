@@ -8,12 +8,7 @@ import { suggestFor, loadRules } from "../lib/autoRules";
 import { toast } from "sonner";
 import { Upload, FileDown, CheckCircle2, AlertTriangle, XCircle, Loader2, Wand2 } from "lucide-react";
 
-const normVendor = (s) =>
-  String(s || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]/g, "");
+import { normalizeText as normVendor } from "../lib/text";
 
 function downloadTemplate() {
   const blob = new Blob(["\uFEFF" + makeTemplateCsv()], { type: "text/csv;charset=utf-8" });
