@@ -13,12 +13,14 @@ export const FREQUENCIES = [
 ];
 
 export function normalizeFreq(freq) {
-  const n = Number(freq);
-  return FREQUENCIES.some((f) => f.value === n) ? n : 1;
+  const n = Math.round(Number(freq));
+  return Number.isFinite(n) && n >= 1 ? Math.min(n, 120) : 1;
 }
 
 export function freqLabel(freq) {
-  return (FREQUENCIES.find((f) => f.value === normalizeFreq(freq)) || FREQUENCIES[0]).label;
+  const n = normalizeFreq(freq);
+  const preset = FREQUENCIES.find((f) => f.value === n);
+  return preset ? preset.label : `Cada ${n} meses`;
 }
 
 function monthIndex(ym) {

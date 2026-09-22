@@ -23,7 +23,9 @@ export default function RecurringManager({ onChanged }) {
     project: "",
     notes: "",
     day: "1",
-    freq: 1,
+    freqChoice: "1",
+    freqMonths: "5",
+    start: ymOf(),
   });
 
   const persist = (next) => {
@@ -42,6 +44,10 @@ export default function RecurringManager({ onChanged }) {
       return;
     }
     const day = Math.min(Math.max(1, Number(form.day) || 1), 31);
+    const freq =
+      form.freqChoice === "custom"
+        ? Math.min(120, Math.max(1, Number(form.freqMonths) || 1))
+        : Math.max(1, Number(form.freqChoice) || 1);
     const tpl = {
       id: templateId(),
       vendor: form.vendor.trim(),
@@ -50,14 +56,24 @@ export default function RecurringManager({ onChanged }) {
       project: form.project.trim() || activeProject || "",
       notes: form.notes.trim(),
       day,
-      freq: Number(form.freq) || 1,
+      freq,
       active: true,
-      start: ymOf(),
+      start: form.start || ymOf(),
       generated: [],
       created_at: new Date().toISOString(),
     };
     persist([...templates, tpl]);
-    setForm({ vendor: "", amount: "", category: "General", project: "", notes: "", day: "1", freq: 1 });
+    setForm({
+      vendor: "",
+      amount: "",
+      category: "General",
+      project: "",
+      notes: "",
+      day: "1",
+      freqChoice: "1",
+      freqMonths: "5",
+      start: ymOf(),
+    });
     toast.success("Gasto recurrente añadido");
   };
 
@@ -151,8 +167,8 @@ export default function RecurringManager({ onChanged }) {
             <div className="space-y-1.5">
               <Label className="text-xs">Frecuencia</Label>
               <Select
-                value={String(form.freq)}
-                onValueChange={(v) => setForm({ ...form, freq: Number(v) })}
+                value={form.freqChoice}
+                onValueChange={(v) => setForm({ ...form, freqChoice: v })}
               >
                 <SelectTrigger data-testid="select-rec-freq" className="rounded-xl bg-white">
                   <SelectValue />
@@ -163,8 +179,33 @@ export default function RecurringManager({ onChanged }) {
                       {f.label}
                     </SelectItem>
                   ))}
+                  <SelectItem value="custom">Personalizada…</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            {form.freqChoice === "custom" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Cada cuántos meses</Label>
+                <Input
+                  data-testid="input-rec-freq-months"
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={form.freqMonths}
+                  onChange={(e) => setForm({ ...form, freqMonths: e.target.value })}
+                  className="rounded-xl bg-white"
+                />
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Mes de inicio</Label>
+              <Input
+                data-testid="input-rec-start"
+                type="month"
+                value={form.start}
+                onChange={(e) => setForm({ ...form, start: e.target.value })}
+                className="rounded-xl bg-white"
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Día del mes (1-31)</Label>
