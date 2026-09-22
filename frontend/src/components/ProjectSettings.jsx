@@ -9,7 +9,7 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { toast } from "sonner";
-import { FolderKanban, Plus, Trash2, Check, Pencil, X } from "lucide-react";
+import { Plus, Trash2, Check, Pencil, X } from "lucide-react";
 
 function ColorDot({ color }) {
   const dot = (COLOR_MAP[color] || COLOR_MAP.stone).dot;

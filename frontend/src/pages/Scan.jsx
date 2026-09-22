@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, toBackendUrl, USE_REMOTE, budgetCrossing, scanReceipt } from "../lib/api";
+import { api, USE_REMOTE, budgetCrossing, scanReceipt } from "../lib/api";
 import { useProjects } from "../lib/projectsContext";
 import { loadClosed } from "../lib/closedMonths";
 import { Card } from "../components/ui/card";
@@ -62,7 +62,7 @@ export default function Scan() {
         window.history.replaceState({}, "", "/escanear");
       }
     })();
-  }, []); // eslint-disable-line
+  }, []);
 
   const scan = async () => {
     if (!image) return;

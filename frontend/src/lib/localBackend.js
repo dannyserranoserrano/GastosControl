@@ -94,8 +94,6 @@ function sanitizeCategoryBudgets(raw) {
   return out;
 }
 
-const sanitizeProjectBudgets = sanitizeCategoryBudgets;
-
 const sortOtrosLast = (a, b) => {
   if (a.name === "Otros") return 1;
   if (b.name === "Otros") return -1;

@@ -39,7 +39,7 @@ export default function ReceiptViewer({ receipt, className = "", ...rest }) {
       alive = false;
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, [receipt?.path, receipt?.url]);
+  }, [receipt?.path, receipt?.url]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!src) return null;
 

@@ -1,4 +1,4 @@
-const NORMALIZE_RE = /[\s\-_.,\/]/g;
+const NORMALIZE_RE = /[\s\-_.,/]/g;
 
 function normalize(str) {
   return String(str || "").toLowerCase().replace(NORMALIZE_RE, "");
@@ -33,7 +33,7 @@ function similarity(a, b) {
   return max === 0 ? 1 : 1 - levenshtein(na, nb) / max;
 }
 
-export function findDuplicates(expenses, { amountThreshold = 0, dateToleranceDays = 0, vendorMinSim = 0.92 } = {}) {
+export function findDuplicates(expenses, { dateToleranceDays = 0, vendorMinSim = 0.92 } = {}) {
   const dupes = new Map();
   const byAmount = new Map();
 

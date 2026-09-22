@@ -7,7 +7,7 @@ import { Button } from "../components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Progress } from "../components/ui/progress";
 import CategoryBadge from "../components/CategoryBadge";
-import { Download, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Receipt, BarChart3, Printer, Lock, Unlock } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, TrendingUp, Receipt, BarChart3, Printer, Lock, Unlock } from "lucide-react";
 import { loadClosed, toggleMonth } from "../lib/closedMonths";
 import { normalizePeriod } from "../lib/period";
 import { toast } from "sonner";
@@ -54,7 +54,6 @@ export default function MonthlyReport() {
   const [budget, setBudget] = useState(null);
   const [projectBudgets, setProjectBudgets] = useState({});
   const [loading, setLoading] = useState(false);
-  const [monthSelectorOpen, setMonthSelectorOpen] = useState(false);
   const [closed, setClosed] = useState(() => loadClosed(activeProject));
 
   useEffect(() => {
@@ -364,7 +363,7 @@ export default function MonthlyReport() {
                 <BarChart3 className="w-5 h-5 text-[#D95D39]" /> Por categoría
               </h3>
               <div className="space-y-3">
-                {categoryRows.map((r, i) => (
+                {categoryRows.map((r) => (
                   <div key={r.cat}>
                     <div className="flex items-center justify-between mb-1">
                       <CategoryBadge category={r.cat} />

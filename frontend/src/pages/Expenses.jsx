@@ -43,7 +43,6 @@ function datePresets(today = new Date()) {
 export default function Expenses() {
   const { categories } = useCategories();
   const { activeProject, refreshFromExpenses } = useProjects();
-  const [items, setItems] = useState([]);
   const [allExpenses, setAllExpenses] = useState([]);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("all");
@@ -56,6 +55,23 @@ export default function Expenses() {
   const [previewImages, setPreviewImages] = useState([]);
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
   const [sort, setSort] = useState("date-desc");
+
+  // El listado se obtiene una sola vez por proyecto y se filtra en cliente
+  // (antes se hacían dos peticiones: filtrada + todas).
+  const items = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    return allExpenses.filter((e) => {
+      if (term) {
+        const hay = `${e.vendor || ""} ${e.notes || ""}`.toLowerCase();
+        if (!hay.includes(term)) return false;
+      }
+      if (category && category !== "all" && e.category !== category) return false;
+      const d = String(e.date || "");
+      if (start && d < start) return false;
+      if (end && d > end) return false;
+      return true;
+    });
+  }, [allExpenses, q, category, start, end]);
 
   const duplicates = useMemo(() => findDuplicates(allExpenses), [allExpenses]);
 
@@ -90,22 +106,15 @@ export default function Expenses() {
   const load = async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (q) params.q = q;
-      if (category && category !== "all") params.category = category;
-      if (activeProject) params.project = activeProject;
-      if (start) params.start = start;
-      if (end) params.end = end;
       const allParams = activeProject ? { project: activeProject } : {};
       const budgetParams = activeProject ? { params: { project: activeProject } } : {};
-      const [{ data }, allResponse, budgetResponse] = await Promise.all([
-        api.get("/expenses", { params }),
+      const [allResponse, budgetResponse] = await Promise.all([
         api.get("/expenses", { params: allParams }),
         api.get("/budget", budgetParams),
       ]);
-      setItems(data);
-      setAllExpenses(allResponse.data || []);
-      refreshFromExpenses(allResponse.data || []);
+      const all = allResponse.data || [];
+      setAllExpenses(all);
+      refreshFromExpenses(all);
       setProjectBudget(budgetResponse.data || null);
     } finally {
       setLoading(false);
@@ -113,12 +122,8 @@ export default function Expenses() {
   };
 
   useEffect(() => {
-    const t = setTimeout(load, 300);
-    return () => clearTimeout(t);
-  }, [category, activeProject, q, start, end]); // eslint-disable-line
-
-  const submitDebounce = () => { const t = setTimeout(load, 300); return () => clearTimeout(t); };
-  useEffect(submitDebounce, [q]); // eslint-disable-line
+    load();
+  }, [activeProject]); // eslint-disable-line
 
   useRecurring(load);
 
@@ -214,7 +219,7 @@ export default function Expenses() {
             label: "Deshacer",
             onClick: async () => {
               try {
-                const { id: _omit, created_at, ...rest } = target;
+                const { id: _omit, created_at: _created_at, ...rest } = target;
                 await api.post("/expenses", rest);
                 toast.success("Gasto restaurado");
                 load();

@@ -59,7 +59,7 @@ async function requireUser() {
 }
 
 function cleanExpense(e) {
-  const { user_id, ...rest } = e || {};
+  const { user_id: _user_id, ...rest } = e || {};
   return { ...rest, amount: Number(e.amount || 0) };
 }
 
