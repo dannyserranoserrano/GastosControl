@@ -30,6 +30,15 @@ function looksLikeStoragePath(s) {
   );
 }
 
+// ¿El recibo es un PDF?
+export function receiptIsPdf(r) {
+  const raw = (r && (r.url || r.path)) || "";
+  if (!raw) return false;
+  if (raw.startsWith("data:application/pdf")) return true;
+  if (r && r.type === "application/pdf") return true;
+  return /\.pdf(\?|$)/i.test(raw);
+}
+
 // Extrae la ruta de storage de un recibo (tanto de una URL pública antigua como
 // de un `{ path }` nuevo). Devuelve null si no es un objeto de Supabase Storage.
 export function receiptStoragePath(r) {

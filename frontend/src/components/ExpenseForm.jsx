@@ -222,7 +222,7 @@ export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar"
           >
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf"
               multiple
               className="hidden"
               data-testid="input-receipts"
@@ -235,7 +235,7 @@ export default function ExpenseForm({ initial, onSubmit, submitLabel = "Guardar"
           </label>
         </div>
         <p className="text-[11px] text-[#5C626A]">
-          Puedes adjuntar varias fotos del mismo gasto (ticket, factura, justificante…).
+          Puedes adjuntar varias imágenes o PDFs del mismo gasto (ticket, factura, justificante…).
         </p>
       </div>
 

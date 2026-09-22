@@ -61,7 +61,7 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Copia de seguridad: exportar/importar todos los datos locales en JSON (gastos, presupuestos, categorías, proyectos, objetivos, recurrentes, reglas y preferencias)
 - [x] Exportar el informe mensual a PDF (impresión del navegador con estilos de impresión)
 - [x] Previsión de gastos recurrentes del mes (total, registrado vs pendiente y estado por plantilla)
-- [x] Varios tickets/imágenes por gasto (adjuntar, ver y descargar varias fotos del mismo gasto)
+- [x] Varios tickets por gasto (adjuntar, ver y descargar varias imágenes o PDFs del mismo gasto)
 - [x] Ficha de proyecto ampliada: nombre, descripción, color e icono (editables)
 - [x] Gráficos avanzados en el Panel: evolución por categoría (barras apiladas) y comparativa mes a mes
 - [x] Cierre de mes: bloquear/reabrir un mes (por proyecto); no se pueden añadir/editar/eliminar gastos de un mes cerrado
@@ -106,7 +106,6 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 ## Backlog (sugerencias para más adelante)
 Pequeñas:
 - Editar plantillas recurrentes existentes (hoy solo crear/borrar/pausar)
-- Adjuntar PDFs como ticket (no solo imágenes)
 - Estado de pago en facturas (pagado/pendiente) + fecha de vencimiento y recordatorio
 - Duplicar/plantilla de gasto y edición masiva (categoría/proyecto a varios gastos)
 - Exportar a Excel (XLSX) además de CSV

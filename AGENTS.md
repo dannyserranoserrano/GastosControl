@@ -139,7 +139,8 @@ GastosApp/
         │   ├── ExpenseForm.jsx
         │   ├── CategoryManager.jsx
         │   ├── CategoryBadge.jsx
-        │   ├── ReceiptImage.jsx (imagen de ticket con src resuelto/async)
+        │   ├── ReceiptImage.jsx (miniatura de ticket: imagen o PDF)
+        │   ├── ReceiptViewer.jsx (visor a tamaño completo: imagen o PDF)
         │   ├── Turnstile.jsx    (CAPTCHA opcional en login/registro)
         │   ├── AccountDialog.jsx (mi cuenta: cambiar contraseña / proveedores)
         │   ├── AutoRulesManager.jsx
@@ -269,7 +270,7 @@ uvicorn server:app --reload
 - **Notificaciones al móvil** (`mobileNotify.js` + `MobileAlertSettings.jsx`): canales gratuitos **Telegram** (Bot API: token + chat ID) y **correo EmailJS** (service/template/public key + destinatario), configurables en **Ajustes → Alertas** (`gastocontrol:mobile_notify`, local al dispositivo) con selección de eventos y **Enviar prueba**. `sendMobile(eventKey, title, body)` se invoca desde `useNotifications` (presupuesto/proyección), `RecurringOverdueAlert` (recurrentes vencidos) y `MonthCloseReminder` (cierre de mes). Telegram usa POST JSON con fallback `no-cors`.
 - **Alta rápida y edición**: **Deshacer** al eliminar (toast con acción que recrea el gasto, sin papelera); **duplicar gasto** (abre el formulario precargado, sin copiar tickets); y **botón flotante** (`QuickAddButton.jsx`, visible en `< md`) que abre el **escáner** (`/escanear`) desde cualquier pantalla.
 - **Verificación al guardar** (`verifyExpenseSaved` en `api.js`): tras crear un gasto se relee la lista; si no existe, avisa de fallo real de guardado, y si existe pero su `project` no coincide con el proyecto activo, avisa de migración pendiente en Supabase. `missingColumn()` (supabaseData) compara por **nombre de columna concreto** para no descartar `project` al reintentar por otra columna ausente (p. ej. `receipts`).
-- **Varios tickets por gasto**: cada gasto guarda `receipts: [{ path, url }]` (además de `receipt_path`/`receipt_url` del primero, por compatibilidad). `ExpenseForm` permite adjuntar/eliminar varias imágenes (redimensionadas a data-URL en local; subidas a Storage en Supabase). La lista de `/gastos` muestra la primera con contador y previsualiza todas; la galería agrupa varias por gasto. Requiere la columna `expenses.receipts` (jsonb) en Supabase (con fallback si falta).
+- **Varios tickets por gasto (imágenes o PDF)**: cada gasto guarda `receipts: [{ path, url }]` (además de `receipt_path`/`receipt_url` del primero, por compatibilidad). `ExpenseForm` permite adjuntar/eliminar varias **imágenes o PDFs** (las imágenes se redimensionan a data-URL en local; ambos se suben a Storage en Supabase). `ReceiptImage` pinta miniaturas (los PDF como ficha con icono) y `ReceiptViewer` los abre a tamaño completo (imagen o PDF en iframe). La lista de `/gastos` muestra la primera con contador y previsualiza todas; la galería agrupa varias por gasto. Requiere la columna `expenses.receipts` (jsonb) en Supabase (con fallback si falta).
 - **Galería de tickets** (`/galeria`): grid de boletos escaneados con búsqueda, filtro por categoría, **orden por fecha (recientes/antiguos) o categoría (A-Z)**, vista previa con zoom y descarga.
 - **Responsive (móvil)**: las filas de acciones de `/gastos` e `/informe` usan scroll horizontal (`overflow-x-auto` + hijos sin encoger) para que los botones de la cabecera no se salgan en pantallas estrechas, igual que las pestañas de Ajustes.
 - El backend FastAPI (opcional) pasó un smoke test previo (ver `test_reports/iteration_1.json`).

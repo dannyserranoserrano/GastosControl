@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api, eur } from "../lib/api";
 import { resolveReceiptSrc } from "../lib/receipts";
 import ReceiptImage from "../components/ReceiptImage";
+import ReceiptViewer from "../components/ReceiptViewer";
 import { useCategories } from "../lib/categoriesContext";
 import { useProjects } from "../lib/projectsContext";
 import { Card } from "../components/ui/card";
@@ -16,8 +17,12 @@ import { Search, Download, Images, ZoomIn, ZoomOut } from "lucide-react";
 
 function extOf(src) {
   if (src && src.startsWith("data:")) {
-    const m = src.match(/^data:(image\/[a-zA-Z-]+);/);
-    if (m) return m[1].replace("image/", "").replace("jpeg", "jpg");
+    const m = src.match(/^data:([a-zA-Z-]+\/[a-zA-Z0-9.+-]+)[;,]/);
+    if (m) {
+      const mime = m[1];
+      if (mime === "application/pdf") return "pdf";
+      if (mime.startsWith("image/")) return mime.slice(6).replace("jpeg", "jpg");
+    }
     return "jpg";
   }
   const m = src && src.match(/\.(\w+)(\?|$)/);
@@ -241,11 +246,11 @@ export default function Gallery() {
                     key={i}
                     className="relative rounded-xl overflow-hidden border border-[#E2DDD3] bg-[#F2EFE9]"
                   >
-                    <ReceiptImage
+                    <ReceiptViewer
                       receipt={r}
                       data-testid={i === 0 ? "gallery-preview" : `gallery-preview-${i}`}
                       alt={`ticket ${i + 1}`}
-                      className={`w-full ${zoomed ? "max-h-none" : "max-h-[70vh] object-contain"} cursor-zoom-in`}
+                      className={`${zoomed ? "max-h-none" : "max-h-[70vh] object-contain"} cursor-zoom-in`}
                       onClick={() => setZoomed((z) => !z)}
                     />
                   </div>

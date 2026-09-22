@@ -24,7 +24,7 @@ export const MANUAL = [
     steps: [
       { t: "Entra en Gastos y pulsa «Añadir gasto».", i: "Plus" },
       { t: "Rellena proveedor, fecha e importe (lo mínimo).", i: "Type" },
-      { t: "Elige la categoría (se sugiere sola) y, si quieres, notas y una o varias fotos.", i: "Tags" },
+      { t: "Elige la categoría (se sugiere sola) y, si quieres, notas y una o varias imágenes o PDFs.", i: "Tags" },
       { t: "Pulsa «Guardar gasto»: aparecerá en la lista y en el Panel.", i: "Save" },
     ],
   },

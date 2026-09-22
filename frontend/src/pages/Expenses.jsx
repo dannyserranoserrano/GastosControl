@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import CategoryBadge from "../components/CategoryBadge";
 import ReceiptImage from "../components/ReceiptImage";
+import ReceiptViewer from "../components/ReceiptViewer";
 import ExpenseForm from "../components/ExpenseForm";
 import AutoRulesManager from "../components/AutoRulesManager";
 import CsvImportDialog from "../components/CsvImportDialog";
@@ -628,12 +629,7 @@ export default function Expenses() {
           </DialogHeader>
           <div className="space-y-3 max-h-[75vh] overflow-auto">
             {previewImages.map((r, i) => (
-              <ReceiptImage
-                key={i}
-                receipt={r}
-                alt={`ticket ${i + 1}`}
-                className="w-full object-contain rounded-xl border border-[#E2DDD3]"
-              />
+              <ReceiptViewer key={i} receipt={r} />
             ))}
           </div>
         </DialogContent>
