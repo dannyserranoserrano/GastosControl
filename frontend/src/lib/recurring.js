@@ -2,6 +2,38 @@ const KEY = "gastocontrol:recurring";
 
 const pad = (n) => String(n).padStart(2, "0");
 
+// Cada cuánto se repite el recibo (intervalo en meses).
+export const FREQUENCIES = [
+  { value: 1, label: "Mensual" },
+  { value: 2, label: "Bimestral" },
+  { value: 3, label: "Trimestral" },
+  { value: 4, label: "Cuatrimestral" },
+  { value: 6, label: "Semestral" },
+  { value: 12, label: "Anual" },
+];
+
+export function normalizeFreq(freq) {
+  const n = Number(freq);
+  return FREQUENCIES.some((f) => f.value === n) ? n : 1;
+}
+
+export function freqLabel(freq) {
+  return (FREQUENCIES.find((f) => f.value === normalizeFreq(freq)) || FREQUENCIES[0]).label;
+}
+
+function monthIndex(ym) {
+  const [y, m] = String(ym).split("-").map(Number);
+  return y * 12 + (m - 1);
+}
+
+// ¿Le toca generar en el mes `ym`? (a partir del mes de inicio, cada `freq` meses)
+export function isDueMonth(t, ym) {
+  const start = (t && t.start) || ym;
+  const freq = normalizeFreq(t && t.freq);
+  const diff = monthIndex(ym) - monthIndex(start);
+  return diff >= 0 && diff % freq === 0;
+}
+
 export function ymOf(date = new Date()) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
 }
@@ -50,7 +82,7 @@ export function pendingFor(templates, today = new Date()) {
 
     while (y < cy || (y === cy && m <= cm)) {
       const ym = `${y}-${pad(m)}`;
-      if (!generated.has(ym)) {
+      if (isDueMonth(t, ym) && !generated.has(ym)) {
         const dim = new Date(y, m, 0).getDate();
         const day = Math.min(Math.max(1, Number(t.day) || 1), dim);
         const isCurrent = ym === curYM;

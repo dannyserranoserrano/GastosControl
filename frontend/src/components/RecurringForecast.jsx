@@ -3,7 +3,7 @@ import { eur } from "../lib/api";
 import { useProjects } from "../lib/projectsContext";
 import { Card } from "./ui/card";
 import { Progress } from "./ui/progress";
-import { loadTemplates } from "../lib/recurring";
+import { loadTemplates, isDueMonth, freqLabel } from "../lib/recurring";
 import { Repeat, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -21,7 +21,7 @@ export default function RecurringForecast({ reloadKey }) {
   const dim = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
   const scoped = templates.filter(
-    (t) => t.active && (!activeProject || (t.project || "") === activeProject)
+    (t) => t.active && isDueMonth(t, ym) && (!activeProject || (t.project || "") === activeProject)
   );
   if (scoped.length === 0) return null;
 
@@ -49,7 +49,7 @@ export default function RecurringForecast({ reloadKey }) {
       </p>
 
       <div className="mt-4 grid grid-cols-3 gap-3">
-        <Stat label="Total mensual" value={eur(totalExpected)} />
+        <Stat label="Total del mes" value={eur(totalExpected)} />
         <Stat label="Registrado" value={eur(paid)} tone="text-emerald-700" />
         <Stat label="Pendiente" value={eur(pending)} tone={pending > 0 ? "text-amber-700" : "text-[#5C626A]"} />
       </div>
@@ -73,7 +73,7 @@ export default function RecurringForecast({ reloadKey }) {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-[#1A1D20] truncate">{r.vendor}</p>
               <p className="text-xs text-[#5C626A] font-mono">
-                {r.date}
+                {freqLabel(r.freq)} · {r.date}
                 {r.project ? ` · ${r.project}` : ""}
               </p>
             </div>

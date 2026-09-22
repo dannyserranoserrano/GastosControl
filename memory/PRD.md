@@ -49,7 +49,8 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Orden de la lista de gastos: fecha (recientes/antiguos), categoría (A-Z) y con/sin ticket adjunto
 - [x] Auto-categorización por proveedor (aprende del historial + reglas explícitas gestionables)
 - [x] Importar gastos desde CSV (parseo flexible, previsualización, validación y omisión de duplicados)
-- [x] Gastos recurrentes (plantillas mensuales que se generan automáticamente, con pausa y generación manual)
+- [x] Gastos recurrentes (plantillas que se generan automáticamente, con pausa y generación manual)
+- [x] Frecuencia de los recurrentes: mensual, bimestral, trimestral, cuatrimestral, semestral y anual
 - [x] Modo oscuro (toggle en el header, persistente y con opción de seguir al sistema)
 - [x] Presupuestos por periodo (semanal/mensual/anual): progreso, alertas y proyecciones sobre el periodo activo
 - [x] Proyectos como espacios de trabajo: selector global; cada proyecto tiene sus propios gastos, presupuesto (total, categorías y periodo) y estadísticas

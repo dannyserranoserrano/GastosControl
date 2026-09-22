@@ -1,19 +1,20 @@
 import { useEffect, useRef } from "react";
 import { api } from "./api";
 import { toast } from "sonner";
-import { loadTemplates, saveTemplates, pendingFor } from "./recurring";
+import { loadTemplates, saveTemplates, pendingFor, isDueMonth } from "./recurring";
 
 const pad = (n) => String(n).padStart(2, "0");
 
 /**
- * Genera un recurrente para el mes actual (si no se ha generado ya) y lo marca.
- * Devuelve true si se creó el gasto.
+ * Genera el recurrente para el mes actual si le toca y no se ha generado ya.
+ * Devuelve "created" | "exists" | "not-due".
  */
 export async function generateRecurringNow(template) {
   const now = new Date();
   const ym = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+  if (!isDueMonth(template, ym)) return "not-due";
   const generated = new Set(template.generated || []);
-  if (generated.has(ym)) return false;
+  if (generated.has(ym)) return "exists";
 
   const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const day = Math.min(Math.max(1, Number(template.day) || 1), dim);
@@ -35,7 +36,7 @@ export async function generateRecurringNow(template) {
         : t
     )
   );
-  return true;
+  return "created";
 }
 
 /**

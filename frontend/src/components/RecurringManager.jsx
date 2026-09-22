@@ -6,7 +6,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { loadTemplates, saveTemplates, templateId, ymOf } from "../lib/recurring";
+import { loadTemplates, saveTemplates, templateId, ymOf, FREQUENCIES, freqLabel } from "../lib/recurring";
 import { generateRecurringNow } from "../lib/useRecurring";
 import { toast } from "sonner";
 import { Repeat, Plus, Trash2, Zap } from "lucide-react";
@@ -23,6 +23,7 @@ export default function RecurringManager({ onChanged }) {
     project: "",
     notes: "",
     day: "1",
+    freq: 1,
   });
 
   const persist = (next) => {
@@ -49,13 +50,14 @@ export default function RecurringManager({ onChanged }) {
       project: form.project.trim() || activeProject || "",
       notes: form.notes.trim(),
       day,
+      freq: Number(form.freq) || 1,
       active: true,
       start: ymOf(),
       generated: [],
       created_at: new Date().toISOString(),
     };
     persist([...templates, tpl]);
-    setForm({ vendor: "", amount: "", category: "General", project: "", notes: "", day: "1" });
+    setForm({ vendor: "", amount: "", category: "General", project: "", notes: "", day: "1", freq: 1 });
     toast.success("Gasto recurrente añadido");
   };
 
@@ -66,9 +68,13 @@ export default function RecurringManager({ onChanged }) {
 
   const generateNow = async (t) => {
     try {
-      const ok = await generateRecurringNow(t);
-      if (!ok) {
-        toast.info("Ya se generó este mes para esta plantilla");
+      const res = await generateRecurringNow(t);
+      if (res === "exists") {
+        toast.info("Ya se generó este periodo para esta plantilla");
+        return;
+      }
+      if (res === "not-due") {
+        toast.info("Este recurrente no toca este mes");
         return;
       }
       setTemplates(loadTemplates());
@@ -100,7 +106,8 @@ export default function RecurringManager({ onChanged }) {
           <DialogTitle className="font-heading">Gastos recurrentes</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-[#5C626A] -mt-1">
-          Se generan automáticamente al abrir la app, una vez por mes, a partir del mes de inicio.
+          Se generan automáticamente al abrir la app, según su frecuencia (mensual, bimestral,
+          trimestral…), a partir del mes de inicio.
         </p>
 
         <div className="mt-2 rounded-xl border border-[#E2DDD3] bg-[#FAF8F5] p-3 space-y-3">
@@ -137,6 +144,24 @@ export default function RecurringManager({ onChanged }) {
                 <SelectContent>
                   {categories.map((c) => (
                     <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Frecuencia</Label>
+              <Select
+                value={String(form.freq)}
+                onValueChange={(v) => setForm({ ...form, freq: Number(v) })}
+              >
+                <SelectTrigger data-testid="select-rec-freq" className="rounded-xl bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FREQUENCIES.map((f) => (
+                    <SelectItem key={f.value} value={String(f.value)}>
+                      {f.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -205,7 +230,7 @@ export default function RecurringManager({ onChanged }) {
                       {t.vendor} · {Number(t.amount).toFixed(2)}€
                     </p>
                     <p className="text-xs text-[#5C626A] mt-0.5">
-                      día {t.day} · {t.category}
+                      {freqLabel(t.freq)} · día {t.day} · {t.category}
                       {t.project ? ` · ${t.project}` : ""}
                     </p>
                   </div>
@@ -228,7 +253,7 @@ export default function RecurringManager({ onChanged }) {
                     data-testid={`btn-generate-recurring-${t.id}`}
                     onClick={() => generateNow(t)}
                     className="rounded-lg"
-                    title="Generar este mes"
+                    title="Generar el periodo actual"
                   >
                     <Zap className="w-4 h-4" />
                   </Button>

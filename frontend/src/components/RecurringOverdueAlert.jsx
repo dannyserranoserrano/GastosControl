@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { eur } from "../lib/api";
 import { useProjects } from "../lib/projectsContext";
-import { loadTemplates } from "../lib/recurring";
+import { loadTemplates, isDueMonth } from "../lib/recurring";
 import { generateRecurringNow } from "../lib/useRecurring";
 import { sendMobile } from "../lib/mobileNotify";
 import { Button } from "./ui/button";
@@ -27,6 +27,7 @@ export default function RecurringOverdueAlert({ onGenerated }) {
   const overdue = templates.filter((t) => {
     if (!t.active) return false;
     if (activeProject && (t.project || "") !== activeProject) return false;
+    if (!isDueMonth(t, ym)) return false;
     const day = Math.min(Math.max(1, Number(t.day) || 1), dim);
     const generated = (t.generated || []).includes(ym);
     return !generated && today.getDate() > day;
@@ -53,8 +54,8 @@ export default function RecurringOverdueAlert({ onGenerated }) {
   const generate = async (t) => {
     setBusy(true);
     try {
-      const ok = await generateRecurringNow(t);
-      if (ok) toast.success(`Generado: ${t.vendor}`);
+      const res = await generateRecurringNow(t);
+      if (res === "created") toast.success(`Generado: ${t.vendor}`);
       setTemplates(loadTemplates());
       onGenerated?.();
     } catch {
@@ -69,7 +70,7 @@ export default function RecurringOverdueAlert({ onGenerated }) {
     let ok = 0;
     for (const t of overdue) {
       try {
-        if (await generateRecurringNow(t)) ok++;
+        if ((await generateRecurringNow(t)) === "created") ok++;
       } catch {
         /* sigue con el resto */
       }
