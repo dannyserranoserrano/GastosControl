@@ -41,10 +41,19 @@ export default defineConfig({
             purpose: "maskable",
           },
         ],
+        share_target: {
+          action: "/share-target",
+          method: "POST",
+          enctype: "multipart/form-data",
+          params: {
+            files: [{ name: "ticket", accept: ["image/*", "application/pdf"] }],
+          },
+        },
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
         navigateFallback: "index.html",
+        importScripts: ["share-sw.js"],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.startsWith("/api/"),

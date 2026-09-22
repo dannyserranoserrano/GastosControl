@@ -72,12 +72,14 @@ function norm(s) {
 }
 
 const ALIASES = {
-  date: ["fecha", "date", "dia", "fechagasto"],
-  vendor: ["proveedor", "vendor", "comercio", "establecimiento", "tienda", "merchant"],
-  amount: ["importe", "amount", "total", "precio", "coste", "importeeur", "importeuro"],
+  date: ["fecha", "date", "dia", "fechagasto", "fechavalor", "fechaoperacion", "fechamovimiento", "fechacontable"],
+  vendor: ["proveedor", "vendor", "comercio", "establecimiento", "tienda", "merchant", "concepto", "descripcion", "detalle", "movimiento", "beneficiario", "descripcionoperacion"],
+  amount: ["importe", "amount", "total", "precio", "coste", "importeeur", "importeuro", "cuantia", "importeeuros"],
+  debit: ["debe", "cargo", "cargoimporte", "debito", "salida", "importecargo", "pagado"],
+  credit: ["haber", "abono", "credito", "entrada", "ingreso", "importeabono"],
   category: ["categoria", "category"],
   project: ["proyecto", "project", "obra", "proyectoobra", "proyectosobra"],
-  notes: ["notas", "notes", "nota", "descripcion", "detalle"],
+  notes: ["notas", "notes", "nota", "observaciones", "descripcion", "detalle", "concepto"],
 };
 
 function findColumn(headers, key) {
@@ -143,6 +145,8 @@ export function mapRowsToExpenses(rows) {
   const hasHeader =
     findColumn(first, "date") > -1 ||
     findColumn(first, "amount") > -1 ||
+    findColumn(first, "debit") > -1 ||
+    findColumn(first, "credit") > -1 ||
     findColumn(first, "vendor") > -1 ||
     findColumn(first, "category") > -1;
 
@@ -153,29 +157,45 @@ export function mapRowsToExpenses(rows) {
       date: findColumn(first, "date"),
       vendor: findColumn(first, "vendor"),
       amount: findColumn(first, "amount"),
+      debit: findColumn(first, "debit"),
+      credit: findColumn(first, "credit"),
       category: findColumn(first, "category"),
       project: findColumn(first, "project"),
       notes: findColumn(first, "notes"),
     };
   } else {
-    idx = { date: 0, vendor: 1, amount: 2, category: 3, project: 4, notes: 5 };
+    idx = { date: 0, vendor: 1, amount: 2, debit: -1, credit: -1, category: 3, project: 4, notes: 5 };
   }
 
   const records = dataRows.map((raw, i) => {
     const get = (k) => (idx[k] > -1 && raw[idx[k]] !== undefined ? String(raw[idx[k]]).trim() : "");
     const date = parseDate(get("date"));
-    const amount = parseAmount(get("amount"));
+    let amount = parseAmount(get("amount"));
+    let income = false;
+    if (!Number.isFinite(amount)) {
+      // Extractos con columnas Debe/Haber o Cargo/Abono
+      const debit = parseAmount(get("debit"));
+      const credit = parseAmount(get("credit"));
+      if (Number.isFinite(debit) && debit !== 0) amount = Math.abs(debit);
+      else if (Number.isFinite(credit) && credit !== 0) {
+        amount = Math.abs(credit);
+        income = true;
+      }
+    } else if (amount < 0) {
+      // Importe negativo = cargo
+      amount = Math.abs(amount);
+    }
     const errors = [];
     if (!date) errors.push("fecha inválida");
-    if (!Number.isFinite(amount)) errors.push("importe inválido");
-    if (Number.isFinite(amount) && amount < 0) errors.push("importe negativo");
+    if (!Number.isFinite(amount) || amount === 0) errors.push("importe inválido");
+    if (income) errors.push("ingreso (se omite)");
     return {
       line: i + (hasHeader ? 2 : 1),
       data: {
         date,
         vendor: get("vendor"),
-        amount: Number.isFinite(amount) ? amount : 0,
-        category: get("category") || "Otros",
+        amount: Number.isFinite(amount) ? Math.abs(amount) : 0,
+        category: get("category"),
         project: get("project"),
         notes: get("notes"),
       },
@@ -184,6 +204,49 @@ export function mapRowsToExpenses(rows) {
   });
 
   return { hasHeader, records };
+}
+
+/**
+ * Parser de extractos OFX (SGML/XML). En OFX los cargos son negativos.
+ * Devuelve { hasHeader, records } con el mismo formato que mapRowsToExpenses.
+ */
+export function parseOfx(text) {
+  const src = stripBom(String(text || ""));
+  const blocks = src.split(/<STMTTRN>/i).slice(1);
+  const records = blocks.map((b, i) => {
+    const pick = (tag) => {
+      const m = b.match(new RegExp(`<${tag}>([^<\\r\\n]+)`, "i"));
+      return m ? m[1].trim() : "";
+    };
+    const amt = parseAmount(pick("TRNAMT"));
+    const dt = pick("DTPOSTED");
+    let date = "";
+    const dm = dt.match(/^(\d{4})(\d{2})(\d{2})/);
+    if (dm) date = `${dm[1]}-${dm[2]}-${dm[3]}`;
+    const vendor = pick("NAME") || pick("MEMO");
+    const income = Number.isFinite(amt) && amt > 0;
+    const errors = [];
+    if (!date) errors.push("fecha inválida");
+    if (!Number.isFinite(amt) || amt === 0) errors.push("importe inválido");
+    if (income) errors.push("ingreso (se omite)");
+    return {
+      line: i + 1,
+      data: {
+        date,
+        vendor,
+        amount: Number.isFinite(amt) ? Math.abs(amt) : 0,
+        category: "",
+        project: "",
+        notes: pick("MEMO"),
+      },
+      errors,
+    };
+  });
+  return { hasHeader: true, records };
+}
+
+export function looksLikeOfx(text) {
+  return /OFXHEADER|<OFX>/i.test(String(text || "").slice(0, 4000));
 }
 
 export function makeTemplateCsv() {

@@ -8,6 +8,27 @@
 
 export const HELP_ITEMS = [
   {
+    id: "importar-extractos",
+    icon: "Upload",
+    title: "Importar extractos bancarios (CSV/OFX)",
+    updated: "2026-09-22",
+    body: [
+      "En Gastos → «Importar CSV» puedes subir un CSV o un extracto OFX del banco.",
+      "Detecta las columnas de fecha, concepto/descripción e importe (o Debe/Haber); los ingresos se omiten.",
+      "Auto-categoriza por tus reglas e historial y omite duplicados antes de importar.",
+    ],
+  },
+  {
+    id: "compartir-a-escaner",
+    icon: "Share2",
+    title: "Compartir una foto desde otra app",
+    updated: "2026-09-22",
+    body: [
+      "Con la app instalada (PWA), desde la galería o el correo puedes «Compartir» una foto o PDF y elegir GastoControl.",
+      "Se abrirá directamente en el escáner con el archivo cargado, listo para analizar con IA.",
+    ],
+  },
+  {
     id: "recurrentes-editar",
     icon: "Repeat",
     title: "Editar plantillas recurrentes",

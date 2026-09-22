@@ -134,7 +134,7 @@ export const MANUAL = [
     title: "Importar y exportar datos",
     image: "/help/gastos.jpg",
     steps: [
-      { t: "Gastos → «Importar CSV»: previsualiza, valida y omite duplicados.", i: "Upload" },
+      { t: "Gastos → «Importar CSV»: acepta CSV o extractos OFX, auto-categoriza y omite duplicados.", i: "Upload" },
       { t: "Gastos → «Exportar CSV»: descarga todos los gastos.", i: "Download" },
       { t: "Ajustes → Datos: copia de seguridad completa en JSON.", i: "Database" },
     ],
@@ -177,6 +177,7 @@ export const MANUAL = [
     image: "/help/panel.jpg",
     steps: [
       { t: "Usa el botón «Instalar» (Android/escritorio) o, en iPhone, Safari → Compartir → Añadir a pantalla de inicio.", i: "Download" },
+      { t: "Desde otra app, comparte una foto o PDF y elige GastoControl: se abrirá en el escáner.", i: "Share2" },
       { t: "Cambia entre tema claro y oscuro con el botón de la cabecera.", i: "Moon" },
       { t: "La app funciona sin conexión con los datos guardados en el dispositivo.", i: "WifiOff" },
     ],

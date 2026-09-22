@@ -50,6 +50,8 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Orden de la lista de gastos: fecha (recientes/antiguos), categoría (A-Z) y con/sin ticket adjunto
 - [x] Auto-categorización por proveedor (aprende del historial + reglas explícitas gestionables)
 - [x] Importar gastos desde CSV (parseo flexible, previsualización, validación y omisión de duplicados)
+- [x] Importar extractos bancarios (CSV y OFX) con auto-categorización y detección de columnas (concepto, importe o Debe/Haber)
+- [x] Web Share Target: compartir una foto/PDF desde otra app abre el escáner (PWA)
 - [x] Gastos recurrentes (plantillas que se generan automáticamente, con pausa y generación manual)
 - [x] Frecuencia de los recurrentes: mensual, bimestral, trimestral, cuatrimestral, semestral, anual y personalizada (cada X meses), con mes de inicio elegible
 - [x] Editar plantillas recurrentes existentes (proveedor, importe, categoría, proyecto, día, frecuencia y mes de inicio)
@@ -113,9 +115,7 @@ Pequeñas:
 
 Medianas:
 - Etiquetas (tags) además de categorías, con filtros y presupuesto por etiqueta
-- Importar extractos bancarios (CSV/OFX) con auto-categorización
 - Recurrentes semanales/quincenales (además de por meses)
-- Web Share Target: compartir foto desde otra app → escáner
 - Atajo rápido / añadir gasto en 1 toque (PWA)
 - Comparativa interanual y ticket medio por proveedor en el Informe
 - Enviar el informe mensual automáticamente por email/Telegram

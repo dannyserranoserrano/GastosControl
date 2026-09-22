@@ -3,9 +3,10 @@ import { api } from "../lib/api";
 import { useCategories } from "../lib/categoriesContext";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { parseCsv, mapRowsToExpenses, makeTemplateCsv } from "../lib/csv";
+import { parseCsv, mapRowsToExpenses, makeTemplateCsv, parseOfx, looksLikeOfx } from "../lib/csv";
+import { suggestFor, loadRules } from "../lib/autoRules";
 import { toast } from "sonner";
-import { Upload, FileDown, CheckCircle2, AlertTriangle, XCircle, Loader2 } from "lucide-react";
+import { Upload, FileDown, CheckCircle2, AlertTriangle, XCircle, Loader2, Wand2 } from "lucide-react";
 
 const normVendor = (s) =>
   String(s || "")
@@ -32,6 +33,7 @@ export default function CsvImportDialog({ existing = [], onDone, defaultProject 
   const [fileName, setFileName] = useState("");
   const [records, setRecords] = useState([]);
   const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const [autoCat, setAutoCat] = useState(true);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -49,8 +51,24 @@ export default function CsvImportDialog({ existing = [], onDone, defaultProject 
     setResult(null);
     try {
       const text = await file.text();
-      const rows = parseCsv(text);
-      const { records: recs } = mapRowsToExpenses(rows);
+      const isOfx = looksLikeOfx(text) || /\.ofx$/i.test(file.name || "");
+      const { records: recs } = isOfx
+        ? parseOfx(text)
+        : mapRowsToExpenses(parseCsv(text));
+
+      // Auto-categorización por reglas e historial
+      const rules = loadRules();
+      recs.forEach((r) => {
+        if (!r.data.category && autoCat) {
+          const s = suggestFor(r.data.vendor, existing, rules);
+          if (s?.category) {
+            r.data.category = s.category;
+            r.auto = s.category;
+          }
+          if (s?.project && !r.data.project) r.data.project = s.project;
+        }
+        if (!r.data.category) r.data.category = "Otros";
+      });
 
       const existingKeys = new Set(
         (existing || []).map(
@@ -77,7 +95,7 @@ export default function CsvImportDialog({ existing = [], onDone, defaultProject 
 
       setFileName(file.name);
       setRecords(enriched);
-      if (enriched.length === 0) toast.error("El CSV no contiene filas de datos");
+      if (enriched.length === 0) toast.error("El archivo no contiene filas de datos");
     } catch (e) {
       toast.error("No se pudo leer el archivo");
     }
@@ -131,20 +149,31 @@ export default function CsvImportDialog({ existing = [], onDone, defaultProject 
       </DialogTrigger>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle className="font-heading">Importar gastos desde CSV</DialogTitle>
+          <DialogTitle className="font-heading">Importar gastos o extracto bancario</DialogTitle>
         </DialogHeader>
 
         <div className="text-sm text-[#5C626A] -mt-1">
-          Acepta separador <code className="font-mono">;</code>, <code className="font-mono">,</code> o tabulador.
-          Columnas: fecha, proveedor, categoría, proyecto / obra, importe, notas.
+          Acepta <strong>CSV</strong> (separador <code className="font-mono">;</code>,{" "}
+          <code className="font-mono">,</code> o tabulador) y extractos <strong>OFX</strong>. Detecta
+          columnas de fecha, concepto/descripción, importe o Debe/Haber. Los ingresos se omiten.
           <button
             type="button"
             onClick={downloadTemplate}
             className="ml-1 text-[#D95D39] hover:underline inline-flex items-center gap-1"
           >
-            <FileDown className="w-3.5 h-3.5" /> Descargar plantilla
+            <FileDown className="w-3.5 h-3.5" /> Descargar plantilla CSV
           </button>
         </div>
+
+        <label className="mt-3 inline-flex items-center gap-2 text-sm text-[#1A1D20]">
+          <input
+            type="checkbox"
+            checked={autoCat}
+            onChange={(e) => setAutoCat(e.target.checked)}
+            data-testid="chk-auto-categorize"
+          />
+          <Wand2 className="w-4 h-4 text-[#D95D39]" /> Auto-categorizar por reglas e historial
+        </label>
 
         <div className="mt-3">
           <label
@@ -157,7 +186,7 @@ export default function CsvImportDialog({ existing = [], onDone, defaultProject 
           >
             <input
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.ofx,.txt,text/csv,application/x-ofx"
               className="hidden"
               data-testid="input-csv-file"
               onChange={(e) => handleFile(e.target.files?.[0])}
@@ -224,7 +253,12 @@ export default function CsvImportDialog({ existing = [], onDone, defaultProject 
                       <td className="px-2 py-1.5 font-mono text-[#5C626A]">{r.line}</td>
                       <td className="px-2 py-1.5 font-mono">{r.data.date || "—"}</td>
                       <td className="px-2 py-1.5 truncate max-w-[140px]">{r.data.vendor || "—"}</td>
-                      <td className="px-2 py-1.5">{r.data.category}</td>
+                      <td className="px-2 py-1.5">
+                        {r.data.category}
+                        {r.auto ? (
+                          <span className="text-[#D95D39]"> · auto</span>
+                        ) : null}
+                      </td>
                       <td className="px-2 py-1.5 truncate max-w-[120px]">{r.data.project || "—"}</td>
                       <td className="px-2 py-1.5 text-right font-mono">
                         {Number.isFinite(r.data.amount) ? r.data.amount.toFixed(2) : "—"}

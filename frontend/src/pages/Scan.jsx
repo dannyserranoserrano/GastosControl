@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, toBackendUrl, USE_REMOTE, budgetCrossing, scanReceipt } from "../lib/api";
 import { useProjects } from "../lib/projectsContext";
 import { loadClosed } from "../lib/closedMonths";
@@ -37,6 +37,32 @@ export default function Scan() {
     const f = e.dataTransfer.files?.[0];
     if (f) pick(f);
   };
+
+  // Web Share Target: recoge la imagen/PDF compartida desde otra app.
+  useEffect(() => {
+    if (typeof caches === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("shared")) return;
+    (async () => {
+      try {
+        const cache = await caches.open("gastocontrol-share");
+        const res = await cache.match("/shared-file");
+        if (res) {
+          const blob = await res.blob();
+          const name = decodeURIComponent(res.headers.get("x-share-name") || "compartido");
+          const f = new File([blob], name, {
+            type: blob.type || res.headers.get("content-type") || "image/jpeg",
+          });
+          pick(f);
+          await cache.delete("/shared-file");
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        window.history.replaceState({}, "", "/escanear");
+      }
+    })();
+  }, []); // eslint-disable-line
 
   const scan = async () => {
     if (!image) return;
