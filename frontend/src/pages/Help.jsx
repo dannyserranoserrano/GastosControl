@@ -8,12 +8,16 @@ import {
   Rocket, UserCog, FolderKanban, Receipt, Repeat, ShieldCheck,
   LayoutDashboard, ScanLine, Images, Wallet, Tags, BarChart3, CalendarDays,
   Lock, PiggyBank, Upload, Sparkles, Copy, Bell, Database, Moon,
+  LogIn, ChevronDown, Plus, Type, Save, Check, Layers, Target, Percent,
+  Zap, Pause, Download, ZoomIn, KeyRound, Unlock, WifiOff,
 } from "lucide-react";
 
 const ICONS = {
   Rocket, UserCog, FolderKanban, Receipt, Repeat, ShieldCheck, LayoutDashboard,
   ScanLine, Images, Wallet, Tags, BarChart3, CalendarDays, Lock, PiggyBank,
   Upload, Sparkles, Copy, Bell, Database, Moon,
+  LogIn, ChevronDown, Plus, Type, Save, Check, Layers, Target, Percent,
+  Zap, Pause, Download, ZoomIn, KeyRound, Unlock, WifiOff,
 };
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -123,15 +127,27 @@ export default function Help() {
                     {it.title}
                   </h2>
                   <ol className="mt-3 space-y-2">
-                    {(it.steps || []).map((s, i) => (
-                      <li key={i} className="text-sm text-[#1A1D20] flex gap-3">
-                        <span className="w-5 h-5 rounded-full bg-[#F2EFE9] border border-[#E2DDD3] text-[11px] font-mono flex items-center justify-center shrink-0 mt-0.5">
-                          {i + 1}
-                        </span>
-                        <span>{s}</span>
-                      </li>
-                    ))}
+                    {(it.steps || []).map((s, i) => {
+                      const step = typeof s === "string" ? { t: s, i: null } : s;
+                      const StepIcon = ICONS[step.i] || Check;
+                      return (
+                        <li key={i} className="text-sm text-[#1A1D20] flex gap-3">
+                          <span className="w-7 h-7 rounded-lg bg-[#F2EFE9] border border-[#E2DDD3] text-[#D95D39] flex items-center justify-center shrink-0 mt-0.5">
+                            <StepIcon className="w-3.5 h-3.5" />
+                          </span>
+                          <span>{step.t}</span>
+                        </li>
+                      );
+                    })}
                   </ol>
+                  {it.image && (
+                    <img
+                      src={it.image}
+                      alt={`Captura: ${it.title}`}
+                      loading="lazy"
+                      className="mt-4 w-full rounded-xl border border-[#E2DDD3] bg-[#F2EFE9]"
+                    />
+                  )}
                 </Card>
               );
             })}

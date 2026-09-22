@@ -86,7 +86,7 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Gestión de cuenta: cambiar contraseña (pidiendo la actual), enlace de recuperación (email/contraseña), ajustes del proveedor (Google/GitHub) y **cerrar sesión** desde el mismo menú
 - [x] Proyecto activo permanente (último usado): se eliminó «Todos los proyectos»
 - [x] Selector de proyecto en la cabecera (al pulsar el nombre): cambia de proyecto y abre el Panel
-- [x] Sección de Ayuda (`/ayuda`) con dos pestañas: **Manual de uso** paso a paso y **Novedades y mejoras** (ordenadas por fecha de actualización, lo más reciente primero), con buscador
+- [x] Sección de Ayuda (`/ayuda`) con dos pestañas: **Manual de uso** paso a paso (con capturas reales e iconos por paso) y **Novedades y mejoras** (ordenadas por fecha de actualización, lo más reciente primero), con buscador
 
 ## Seguridad (2026-09)
 - [x] HTTPS obligatorio: el vhost `:80` redirige (301) y `:443` envía HSTS
