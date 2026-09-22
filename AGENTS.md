@@ -278,4 +278,4 @@ uvicorn server:app --reload
 
 ## 10. Backlog (de `memory/PRD.md`)
 
-- (vacío)
+- Ver las sugerencias de mejora en el Backlog de [`memory/PRD.md`](memory/PRD.md).

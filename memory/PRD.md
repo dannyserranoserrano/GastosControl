@@ -103,5 +103,31 @@ Los usuarios necesitan controlar sus gastos, tanto personales como de un proyect
 - [x] Sin secretos en repo ni en el bundle; sin source maps; el SPA fallback no filtra archivos
 - [x] Scripts de despliegue `deploy/deploy.sh` (frontend) y `deploy/install-apache.sh` (vhosts)
 
-## Backlog
-- (vacío)
+## Backlog (sugerencias para más adelante)
+Pequeñas:
+- Editar plantillas recurrentes existentes (hoy solo crear/borrar/pausar)
+- Adjuntar PDFs como ticket (no solo imágenes)
+- Estado de pago en facturas (pagado/pendiente) + fecha de vencimiento y recordatorio
+- Duplicar/plantilla de gasto y edición masiva (categoría/proyecto a varios gastos)
+- Exportar a Excel (XLSX) además de CSV
+
+Medianas:
+- Etiquetas (tags) además de categorías, con filtros y presupuesto por etiqueta
+- Importar extractos bancarios (CSV/OFX) con auto-categorización
+- Recurrentes semanales/quincenales (además de por meses)
+- Web Share Target: compartir foto desde otra app → escáner
+- Atajo rápido / añadir gasto en 1 toque (PWA)
+- Comparativa interanual y ticket medio por proveedor en el Informe
+- Enviar el informe mensual automáticamente por email/Telegram
+
+Grandes:
+- Compartir un proyecto con otra persona (invitación y permisos; RLS por proyecto)
+- Gastos compartidos / reparto (quién pagó y quién debe)
+- Sincronización real local↔nube con resolución de conflictos y "última sincronización"
+- Auth del backend OCR con JWT de Supabase (en vez de clave compartida) y Web Push
+- Tests automatizados + CI (GitHub Actions)
+
+Extra de calidad:
+- i18n (ahora solo español) y accesibilidad (foco/ARIA/contraste)
+- Multi-divisa (€ por defecto)
+- Alertas de errores (Sentry) y backups automáticos de Supabase
