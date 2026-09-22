@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import { DEFAULT_CATEGORIES } from "./constants";
-import { fileToDataUrl, downloadCsv } from "./localBackend";
+import { downloadCsv } from "./localBackend";
+import { fileToDataUrl, dataUrlToBlob } from "./imageFile";
 import { normalizePeriod, periodRange } from "./period";
 
 function uid() {
@@ -103,17 +104,6 @@ async function listExpenses(user) {
     .limit(2000);
   if (error) throw fail(500, error.message);
   return (data || []).map(cleanExpense);
-}
-
-function dataUrlToBlob(dataUrl) {
-  const parts = dataUrl.split(",");
-  const head = parts[0];
-  const mime = (head.match(/^data:(.*?);base64$/) || [])[1] || "image/jpeg";
-  const bin = atob(parts.slice(1).join(","));
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  const ext = (mime.split("/")[1] || "jpg").replace("jpeg", "jpg");
-  return { blob: new Blob([arr], { type: mime }), ext };
 }
 
 export async function uploadReceiptToStorage(userId, dataUrl) {

@@ -1,20 +1,7 @@
 import { useEffect, useState } from "react";
 import { resolveReceiptSrc, receiptIsPdf } from "../lib/receipts";
+import { dataUrlToBlobUrl } from "../lib/imageFile";
 import { ExternalLink } from "lucide-react";
-
-function dataUrlToBlobUrl(dataUrl) {
-  try {
-    const [head, b64] = dataUrl.split(",");
-    if (!head.includes(";base64")) return null;
-    const mime = (head.match(/data:(.*?)(;base64)?$/) || [])[1] || "application/pdf";
-    const bin = atob(b64);
-    const arr = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    return URL.createObjectURL(new Blob([arr], { type: mime }));
-  } catch {
-    return null;
-  }
-}
 
 // Visor a tamaño completo: imagen o PDF. Para PDFs usa un iframe (convierte las
 // data-URL a blob para que el navegador pueda previsualizarlas) y ofrece abrirlo.

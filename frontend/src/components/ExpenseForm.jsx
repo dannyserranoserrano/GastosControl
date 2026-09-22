@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { useCategories } from "../lib/categoriesContext";
 import { api } from "../lib/api";
 import ReceiptImage from "./ReceiptImage";
-import { fileToDataUrl } from "../lib/localBackend";
+import { fileToDataUrl } from "../lib/imageFile";
 import { loadRules, suggestFor } from "../lib/autoRules";
 import { Sparkles, Plus } from "lucide-react";
 

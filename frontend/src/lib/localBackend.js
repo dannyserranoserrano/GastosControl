@@ -2,6 +2,7 @@ import { DEFAULT_CATEGORIES } from "./constants";
 import { dbGet, dbSet, dbDel, localFileKey } from "./storage";
 import { normalizePeriod, periodRange } from "./period";
 import { csvSafe } from "./csv";
+import { fileToDataUrl } from "./imageFile";
 
 const K = {
   categories: "gastocontrol:categories",
@@ -158,47 +159,6 @@ async function buildExpense(body, cats) {
     receipt_url: receipts[0]?.url || (body && body.receipt_url) || null,
     created_at: new Date().toISOString(),
   };
-}
-
-// --- image utils (attach photo without AI) ---
-function blobToDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result);
-    fr.onerror = () => reject(fr.error);
-    fr.readAsDataURL(blob);
-  });
-}
-
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("image load error"));
-    img.src = src;
-  });
-}
-
-export async function fileToDataUrl(file) {
-  const original = await blobToDataUrl(file);
-  if (!/^image\//.test(file && file.type)) return original;
-  try {
-    const img = await loadImage(original);
-    const width = img.naturalWidth || img.width || 0;
-    const height = img.naturalHeight || img.height || 0;
-    const max = 1600;
-    if (width <= max && height <= max) return original;
-    const scale = Math.min(max / width, max / height);
-    const w = Math.max(1, Math.round(width * scale));
-    const h = Math.max(1, Math.round(height * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-    return canvas.toDataURL("image/jpeg", 0.85);
-  } catch {
-    return original;
-  }
 }
 
 function matchExpenseId(url) {
