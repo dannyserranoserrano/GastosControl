@@ -5,49 +5,7 @@ import { fileToDataUrl, dataUrlToBlob } from "./imageFile";
 import { round2, sanitizeCategoryBudgets } from "./budget";
 import { normalizePeriod, periodRange } from "./period";
 
-function uid() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
-}
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function fail(status, detail) {
-  const err = new Error(detail || "Error");
-  err.response = { status, data: { detail } };
-  return err;
-}
-
-// Detecta si un error de PostgREST se debe a una columna inexistente concreta
-// (p. ej. `project`/`receipts` cuando no se ha ejecutado el schema actualizado).
-// Debe ser específico: el error nombra la columna, así no confundimos una columna
-// inexistente con otra (lo que provocaba guardar filas sin `project`, etc.).
-function missingColumn(error, column) {
-  if (!error) return false;
-  const msg = String(error.message || "").toLowerCase();
-  const col = String(column).toLowerCase();
-  return msg.includes(col);
-}
-
-const sortOtrosLast = (a, b) => {
-  if (a.name === "Otros") return 1;
-  if (b.name === "Otros") return -1;
-  return a.name.localeCompare(b.name);
-};
-
-function matchExpenseId(url) {
-  const m = url.match(/^\/expenses\/([^/]+)$/);
-  return m ? decodeURIComponent(m[1]) : null;
-}
-
-function matchCategoryName(url) {
-  const m = url.match(/^\/categories\/([^/]+)$/);
-  return m ? decodeURIComponent(m[1]) : null;
-}
+import { uid, today, fail, missingColumn, sortOtrosLast, matchExpenseId, matchCategoryName } from "./dataHelpers";
 
 async function requireUser() {
   if (!supabase) throw fail(401, "Supabase no configurado");

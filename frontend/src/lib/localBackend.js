@@ -3,6 +3,7 @@ import { dbGet, dbSet, dbDel, localFileKey } from "./storage";
 import { normalizePeriod, periodRange } from "./period";
 import { csvSafe } from "./csv";
 import { fileToDataUrl } from "./imageFile";
+import { uid, today, fail, matchExpenseId, matchCategoryName, sortOtrosLast } from "./dataHelpers";
 import { round2, sanitizeCategoryBudgets } from "./budget";
 
 const K = {
@@ -11,23 +12,6 @@ const K = {
   expenses: "gastocontrol:expenses",
   budget: "gastocontrol:budget",
 };
-
-function uid() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
-}
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function fail(status, detail) {
-  const err = new Error(detail || "Error");
-  err.response = { status, data: { detail } };
-  return err;
-}
 
 async function readCategories(project) {
   const proj = String(project || "").trim();
@@ -80,12 +64,6 @@ async function readBudget(project) {
     project: proj,
   };
 }
-
-const sortOtrosLast = (a, b) => {
-  if (a.name === "Otros") return 1;
-  if (b.name === "Otros") return -1;
-  return a.name.localeCompare(b.name);
-};
 
 async function normalizeCategory(cat, cats) {
   return cats.some((c) => c.name === cat) ? cat : "Otros";
@@ -145,16 +123,6 @@ async function buildExpense(body, cats) {
     receipt_url: receipts[0]?.url || (body && body.receipt_url) || null,
     created_at: new Date().toISOString(),
   };
-}
-
-function matchExpenseId(url) {
-  const m = url.match(/^\/expenses\/([^/]+)$/);
-  return m ? decodeURIComponent(m[1]) : null;
-}
-
-function matchCategoryName(url) {
-  const m = url.match(/^\/categories\/([^/]+)$/);
-  return m ? decodeURIComponent(m[1]) : null;
 }
 
 async function dispatch(method, url, body, config) {
