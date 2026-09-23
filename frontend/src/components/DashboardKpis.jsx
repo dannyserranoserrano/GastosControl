@@ -87,7 +87,7 @@ function KpiCard({ testid, icon, label, value, sub, tint }) {
   );
 }
 
-function Stat({ label, value, tone }) {
+export function Stat({ label, value, tone }) {
   return (
     <div className="rounded-xl border border-[#E2DDD3] bg-[#FAF8F5] p-3">
       <div className="text-[11px] font-mono uppercase tracking-widest text-[#5C626A]">{label}</div>

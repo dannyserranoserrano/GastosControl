@@ -7,7 +7,7 @@ import { useProjects } from "../lib/projectsContext";
 import RecurringForecast from "../components/RecurringForecast";
 import RecurringOverdueAlert from "../components/RecurringOverdueAlert";
 import MonthCloseReminder from "../components/MonthCloseReminder";
-import DashboardKpis from "../components/DashboardKpis";
+import DashboardKpis, { Stat } from "../components/DashboardKpis";
 import DashboardCharts from "../components/DashboardCharts";
 import { useCategories } from "../lib/categoriesContext";
 import { Card } from "../components/ui/card";
